@@ -1,11 +1,1 @@
-[
-  {
-    "name": "GachaLog動作確認用テスト商品",
-    "maker": "テストメーカー",
-    "price": 300,
-    "category": "その他",
-    "release_month": "2026年12月",
-    "description": "自動登録の動作確認用",
-    "source_url": "https://example.com/gachalog-test-product"
-  }
-]
+[]
