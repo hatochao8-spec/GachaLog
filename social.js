@@ -281,6 +281,7 @@
         price: priceValue ? Number(priceValue) : null,
         category: $("#submissionCategory").value || "その他",
         release_month: release || null,
+        series_name: $("#submissionSeries").value.trim() || null,
         description: $("#submissionDescription").value.trim() || null,
         image_url: imageUrl,
         image_source: imageUrl ? "user_upload" : null,
