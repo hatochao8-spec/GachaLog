@@ -54,7 +54,7 @@
     $("#createPostForm").hidden = !user;
     $("#profileAuthNotice").hidden = !!user;
     $("#profileButton").textContent = user ? "●" : "○";
-    if (user) loadProfile();
+    if (user) { loadProfile(); refreshNotificationBadge(); }
   }
 
   async function authSubmit(event) {
@@ -325,6 +325,79 @@
     });
   }
 
+
+  function notificationText(item) {
+    const actor = profileOf(item.profiles);
+    const name = actor && (actor.display_name || actor.username) || "ユーザー";
+    if (item.type === "like") return name + "さんがあなたの投稿にいいねしました。";
+    if (item.type === "comment") return name + "さんがあなたの投稿にコメントしました。";
+    if (item.type === "follow") return name + "さんがあなたをフォローしました。";
+    return "新しい通知があります。";
+  }
+
+  async function refreshNotificationBadge() {
+    const button = $("#notificationButton");
+    if (!button) return;
+    if (!user) { $("#notificationBadge").hidden = true; return; }
+    const result = await db.from("notifications").select("id", {count:"exact",head:true})
+      .eq("recipient_id", user.id).is("read_at", null);
+    if (result.error) { console.warn("Notification badge:", result.error); return; }
+    const count = result.count || 0;
+    const badge = $("#notificationBadge");
+    badge.textContent = count > 99 ? "99+" : String(count);
+    badge.hidden = count === 0;
+  }
+
+  async function openNotifications() {
+    if (!user) { showAuth("login"); return; }
+    const content = $("#socialDialogContent");
+    content.innerHTML = '<div class="notifications-panel"><h2>通知</h2><p class="empty-message">読み込んでいます...</p></div>';
+    $("#socialDialog").showModal();
+    const result = await db.from("notifications")
+      .select("id,type,actor_id,post_id,created_at,read_at,profiles!notifications_actor_id_fkey(username,display_name,avatar_url)")
+      .eq("recipient_id", user.id).order("created_at", {ascending:false}).limit(50);
+    if (result.error) {
+      content.innerHTML = '<div class="notifications-panel"><h2>通知</h2><p class="empty-message">通知を読み込めませんでした。' + esc(result.error.message) + '</p></div>';
+      return;
+    }
+    const items = result.data || [];
+    if (!items.length) {
+      content.innerHTML = '<div class="notifications-panel"><h2>通知</h2><p class="empty-message">まだ通知はありません。</p></div>';
+      await refreshNotificationBadge();
+      return;
+    }
+    content.innerHTML = '<div class="notifications-panel"><h2>通知</h2><div class="notification-list">' +
+      items.map(item => '<button type="button" class="notification-item ' + (item.read_at ? "" : "unread") +
+        '" data-notification-id="' + item.id + '" data-actor-id="' + esc(item.actor_id) +
+        '" data-post-id="' + (item.post_id || "") + '">' + avatar(profileOf(item.profiles)) +
+        '<span class="notification-copy"><strong>' + esc(notificationText(item)) +
+        '</strong><small>' + esc(dateLabel(item.created_at)) + '</small></span>' +
+        (item.read_at ? "" : '<span class="notification-dot"></span>') + '</button>').join("") +
+      '</div></div>';
+    await refreshNotificationBadge();
+  }
+
+  async function notificationClick(event) {
+    const button = event.target.closest("[data-notification-id]");
+    if (!button || !user) return;
+    const id = Number(button.dataset.notificationId);
+    const postId = button.dataset.postId;
+    const actorId = button.dataset.actorId;
+    const updated = await db.from("notifications").update({read_at:new Date().toISOString()})
+      .eq("id", id).eq("recipient_id", user.id);
+    if (updated.error) return notify("通知を更新できませんでした：" + updated.error.message);
+    await refreshNotificationBadge();
+    $("#socialDialog").close();
+    if (postId) {
+      window.gachaGo("timeline");
+      await loadFeed();
+      const card = document.querySelector('[data-post-id="' + CSS.escape(postId) + '"]');
+      if (card) card.scrollIntoView({behavior:"smooth",block:"center"});
+    } else if (actorId) {
+      await openPublicProfile(actorId);
+    }
+  }
+
   async function searchUsers(event) {
     event.preventDefault();
     const input = $("#userSearchInput");
@@ -397,6 +470,8 @@
     $("#postLoginButton").addEventListener("click", () => showAuth("login"));
     $("#profileLoginButton").addEventListener("click", () => showAuth("login"));
     $("#profileButton").addEventListener("click", () => user ? window.gachaGo("profile") : showAuth("login"));
+    $("#notificationButton").addEventListener("click", openNotifications);
+    $("#socialDialogContent").addEventListener("click", notificationClick);
     $("#authSwitch").addEventListener("click", () => showAuth(mode === "login" ? "signup" : "login"));
     $("#authForm").addEventListener("submit", authSubmit);
     $("#createPostForm").addEventListener("submit", createPost);
