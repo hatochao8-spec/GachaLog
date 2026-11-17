@@ -37,7 +37,7 @@ function setMessage(text, isError = false) {
 async function loadPending() {
   $("pendingList").innerHTML = '<div class="panel muted">読み込み中...</div>';
   try {
-    const rows = await api("/rest/v1/products?select=id,name,maker,price,category,release_date,release_month,description,image_url,source_url,source_checked_at,status&status=eq.pending&order=id.desc");
+    const rows = await api("/rest/v1/products?select=id,name,maker,price,category,release_date,release_month,description,image_url,source_url,source_checked_at,status,submitted_by&status=eq.pending&order=id.desc");
     if (!rows.length) {
       $("pendingList").innerHTML = '<div class="panel muted">確認待ちの商品はありません。</div>';
       return;
@@ -48,8 +48,8 @@ async function loadPending() {
           <h3>${escapeHTML(p.name)}</h3>
           <div class="meta">
             メーカー：${escapeHTML(p.maker || "未設定")} ・ 価格：${escapeHTML(p.price ?? "未設定")}円<br>
-            カテゴリ：${escapeHTML(p.category || "未設定")} ・ 発売：${escapeHTML(p.release_date || p.release_month || "未設定")}<br>
-            出典：${p.source_url ? `<a href="${escapeHTML(p.source_url)}" target="_blank" rel="noopener noreferrer">商品ページを開く</a>` : "未設定"}
+            カテゴリ：${escapeHTML(p.category || "未設定")} ・ 発売：${escapeHTML(p.release_date || p.release_month || "未設定")}<br>申請者ID：${escapeHTML(p.submitted_by || "自動登録")}<br>
+            出典：${p.source_url && /^https?:\/\//i.test(p.source_url) ? `<a href="${escapeHTML(p.source_url)}" target="_blank" rel="noopener noreferrer">商品ページを開く</a>` : (p.submitted_by ? "ユーザーからの登録申請" : "未設定")}
           </div>
           <p class="desc">${escapeHTML(p.description || "説明なし")}</p>
           ${p.image_url ? `<img src="${escapeHTML(p.image_url)}" alt="" loading="lazy" style="max-width:120px;border-radius:10px">` : ""}
