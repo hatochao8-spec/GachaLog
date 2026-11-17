@@ -513,7 +513,29 @@
       if (!productResult.data) throw new Error("商品が見つかりませんでした。");
       const product = productResult.data;
       const posts = postsResult.data || [];
-      content.innerHTML = '<div class="product-posts-panel"><p class="eyebrow">PRODUCT COMMUNITY</p><h2>' + esc(product.name) + '</h2><p class="product-posts-maker">' + esc(product.maker || "メーカー不明") + '</p><p class="product-posts-count">' + posts.length + '件の投稿</p><div class="product-posts-list">' +
+      const variantsResult = await db.from("product_variants").select("id,name,image_url").eq("product_id",productId).eq("status","published").order("id");
+      if (variantsResult.error) throw variantsResult.error;
+      const variants = variantsResult.data || [];
+      let myVariants = [];
+      if (user && variants.length) {
+        const mine = await db.from("user_variant_collections").select("variant_id,acquired_at,duplicate_count").eq("user_id",user.id).in("variant_id",variants.map(v => v.id));
+        if (mine.error) throw mine.error;
+        myVariants = mine.data || [];
+      }
+      const myVariantMap = new Map(myVariants.map(row => [Number(row.variant_id),row]));
+      const variantCards = variants.map(v => {
+        const owned = myVariantMap.get(Number(v.id));
+        return '<article class="variant-card" data-variant-card="' + v.id + '"><div class="variant-card-main">' +
+          (v.image_url ? '<img src="' + esc(v.image_url) + '" alt="" loading="lazy">' : '<span class="variant-placeholder">🎁</span>') +
+          '<strong>' + esc(v.name) + '</strong></div>' +
+          (user ? '<label>獲得日<input type="date" data-variant-date value="' + esc(owned && owned.acquired_at || '') + '"></label><label>ダブり数<input type="number" min="0" max="999" step="1" data-variant-duplicates value="' + Number(owned && owned.duplicate_count || 0) + '"></label><button type="button" class="small-button ' + (owned ? 'primary' : '') + '" data-variant-toggle data-owned="' + (owned ? '1' : '0') + '">' + (owned ? '所持中 ✓' : '持っているに追加') + '</button>' : '<small class="form-hint">ログインすると所持登録できます</small>') +
+          '</article>';
+      }).join("");
+      content.innerHTML = '<div class="product-posts-panel"><p class="eyebrow">PRODUCT COMMUNITY</p><h2>' + esc(product.name) + '</h2><p class="product-posts-maker">' + esc(product.maker || "メーカー不明") + '</p>' +
+        '<section class="variant-section"><h3>カプセルの種類（' + variants.length + '種類）</h3><p class="form-hint">種類ごとに所持状況・獲得日・ダブり数を管理できます。</p><div class="variant-grid">' + (variantCards || '<p class="empty-message">種類はまだ登録されていません。</p>') + '</div>' +
+        (user ? '<form id="variantSubmissionForm" class="variant-submit-form"><strong>種類を追加申請</strong><label>種類名<input name="name" maxlength="100" required placeholder="例：白ねこ"></label><label>画像（任意）<input name="image" type="file" accept="image/*"></label><button class="dark-button" type="submit">種類を申請する</button><p class="form-hint" id="variantSubmissionMessage">申請した種類は運営の確認後に公開されます。</p></form>' : '') +
+        '<div class="variant-progress">' + (variants.length ? '所持 ' + myVariants.length + ' / ' + variants.length + ' 種類' : '') + '</div></section>' +
+        '<p class="product-posts-count">' + posts.length + '件の投稿</p><div class="product-posts-list">' +
         (posts.map(post => {
           const profile = profileOf(post.profiles);
           return '<article class="post-card">' +
@@ -524,6 +546,50 @@
         }).join("") || '<p class="empty-message">この商品に関する投稿はまだありません。</p>') +
         '</div><button type="button" class="dark-button product-post-back" id="productPostsBack">閉じる</button></div>';
       $("#productPostsBack").addEventListener("click", () => $("#socialDialog").close());
+      const variantForm = $("#variantSubmissionForm");
+      if (variantForm) variantForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        const name = variantForm.elements.name.value.trim();
+        const file = variantForm.elements.image.files[0];
+        if (!name) return;
+        if (file && (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024)) return notify("画像は5MB以下の画像ファイルを選んでください。");
+        const submit = variantForm.querySelector('button[type="submit"]');
+        submit.disabled = true;
+        try {
+          let imageUrl = null;
+          if (file) {
+            const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g,"") || "jpg";
+            const path = user.id + "/variants/" + Date.now() + "." + ext;
+            const upload = await db.storage.from("gachalog-posts").upload(path,file,{cacheControl:"3600",upsert:false,contentType:file.type});
+            if (upload.error) throw upload.error;
+            imageUrl = db.storage.from("gachalog-posts").getPublicUrl(path).data.publicUrl;
+          }
+          const inserted = await db.from("product_variants").insert({product_id:productId,name,image_url:imageUrl,submitted_by:user.id,status:"pending"});
+          if (inserted.error) throw inserted.error;
+          variantForm.reset();
+          $("#variantSubmissionMessage").textContent = "申請しました。運営の確認後に公開されます。";
+          notify("カプセル種類を申請しました！");
+        } catch (error) { notify("申請できませんでした：" + error.message); }
+        finally { submit.disabled = false; }
+      });
+      content.querySelectorAll("[data-variant-toggle]").forEach(button => button.addEventListener("click", async () => {
+        if (!user) return showAuth("login");
+        const card = button.closest("[data-variant-card]");
+        const variantId = Number(card.dataset.variantCard);
+        const wasOwned = button.dataset.owned === "1";
+        const date = card.querySelector("[data-variant-date]").value || null;
+        const duplicates = Number(card.querySelector("[data-variant-duplicates]").value);
+        if (!Number.isInteger(duplicates) || duplicates < 0 || duplicates > 999) return notify("ダブり数は0〜999で入力してください。");
+        button.disabled = true;
+        try {
+          const result = wasOwned
+            ? await db.from("user_variant_collections").delete().eq("user_id",user.id).eq("variant_id",variantId)
+            : await db.from("user_variant_collections").upsert({user_id:user.id,variant_id:variantId,acquired_at:date,duplicate_count:duplicates},{onConflict:"user_id,variant_id"});
+          if (result.error) throw result.error;
+          await openProductPosts(productId);
+          notify(wasOwned ? "所持登録を解除しました。" : "カプセルをコレクションに追加しました！");
+        } catch (error) { notify("更新できませんでした：" + error.message); button.disabled = false; }
+      }));
     } catch (error) {
       console.error("Product posts:", error);
       content.innerHTML = '<div class="product-posts-panel"><h2>商品投稿を読み込めませんでした</h2><p class="empty-message">' + esc(error.message || "") + '</p></div>';
