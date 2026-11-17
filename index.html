@@ -57,6 +57,7 @@
           <label class="form-label" for="submissionPrice">価格・円（任意）</label><input id="submissionPrice" type="number" min="0" max="100000" step="1" placeholder="例：300">
           <label class="form-label" for="submissionCategory">カテゴリー（任意）</label><select id="submissionCategory"><option value="その他">その他</option><option value="動物">動物</option><option value="雑貨">雑貨</option><option value="ミニチュア">ミニチュア</option><option value="キャラクター">キャラクター</option></select>
           <label class="form-label" for="submissionRelease">発売時期（任意）</label><input id="submissionRelease" maxlength="30" placeholder="例：2026年11月">
+          <label class="form-label" for="submissionSeries">ガチャシリーズ名（任意）</label><input id="submissionSeries" maxlength="100" placeholder="例：ふわふわアニマルシリーズ"><p class="form-hint">同じシリーズの商品に同じシリーズ名を設定すると、達成率を計算できます。</p>
           <label class="form-label" for="submissionDescription">商品説明（任意）</label><textarea id="submissionDescription" maxlength="1000" rows="4" placeholder="商品の特徴など"></textarea>
           <label class="form-label" for="submissionImage">商品画像（任意）</label><input id="submissionImage" type="file" accept="image/*">
           <p class="form-hint">自分で撮影した写真、または掲載許可のある画像を使ってね。画像は5MB以下。</p>
@@ -68,8 +69,10 @@
       <section class="view" id="collectionView">
         <div class="page-title"><p class="eyebrow">MY ITEMS</p><h1>マイコレクション</h1><p class="muted">集めたアイテムを自分だけの図鑑に。</p></div>
         <div class="collection-summary"><span>COLLECTED ITEMS</span><strong id="collectionCount">0</strong></div>
-        <div class="product-grid" id="collectionGrid"></div>
-        <p class="empty-state" id="collectionEmpty">まだ登録したアイテムはありません。<br>図鑑からお気に入りを追加してみましょう。</p>
+        <h2 class="profile-section-title">持っている</h2><div class="product-grid" id="collectionGrid"></div>
+        <p class="empty-state" id="collectionEmpty">まだ登録したアイテムはありません。図鑑から「持ってる」に追加してみましょう。</p>
+        <h2 class="profile-section-title">ほしい物リスト</h2><div class="product-grid" id="wishlistGrid"></div>
+        <p class="empty-state" id="wishlistEmpty">ほしい商品はまだありません。図鑑から♡を押して追加できます。</p>
       </section>
 
       <section class="view" id="timelineView">
