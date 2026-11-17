@@ -112,13 +112,16 @@
 
   async function loadCollection() {
     if (!user) { collectionRows = []; window.gachaSetCollectionData?.([], []); return; }
-    const result = await db.from("user_collections").select("product_id,status").eq("user_id", user.id);
+    const result = await db.from("user_collections")
+      .select("product_id,status,acquired_at,duplicate_count,products(id,name,maker,image_url,series_name)")
+      .eq("user_id", user.id);
     if (result.error) { console.error("Collection load:", result.error); return notify("コレクションを読み込めませんでした：" + result.error.message); }
     collectionRows = result.data || [];
     window.gachaSetCollectionData?.(
       collectionRows.filter(row => row.status === "owned").map(row => row.product_id),
       collectionRows.filter(row => row.status === "wishlist").map(row => row.product_id)
     );
+    renderCollectionRecords();
   }
 
   async function setCollectionStatus(productId, status) {
@@ -152,6 +155,36 @@
     }).join("") || '<p class="empty-message">まだ登録されていません。</p>';
   }
 
+  function renderCollectionRecords() {
+    const target = $("#collectionRecords");
+    if (!target) return;
+    const rows = collectionRows.filter(row => row.status === "owned");
+    target.innerHTML = rows.map(row => {
+      const product = profileOf(row.products);
+      if (!product) return "";
+      return '<article class="collection-record-card" data-record-product="' + Number(row.product_id) + '">' +
+        '<strong>' + esc(product.name) + '</strong>' +
+        '<label>獲得日<input type="date" data-record-date value="' + esc(row.acquired_at || "") + '"></label>' +
+        '<label>ダブり数<input type="number" min="0" max="999" step="1" data-record-duplicates value="' + Number(row.duplicate_count || 0) + '"></label>' +
+        '<small class="form-hint">ダブり数は、最初の1個を除いた追加分です</small>' +
+        '<button type="button" class="small-button primary" data-save-record>記録を保存</button></article>';
+    }).join("") || '<p class="empty-state">「持ってる」に登録した商品がここに表示されます。</p>';
+  }
+
+  async function saveCollectionRecord(card) {
+    if (!user || !card) return;
+    const productId = Number(card.dataset.recordProduct);
+    const date = card.querySelector("[data-record-date]").value || null;
+    const duplicates = Number(card.querySelector("[data-record-duplicates]").value);
+    if (!Number.isInteger(duplicates) || duplicates < 0 || duplicates > 999) return notify("ダブり数は0〜999の整数で入力してください。");
+    const result = await db.from("user_collections")
+      .update({acquired_at:date, duplicate_count:duplicates})
+      .eq("user_id",user.id).eq("product_id",productId).eq("status","owned");
+    if (result.error) return notify("記録を保存できませんでした：" + result.error.message);
+    await loadCollection();
+    notify("獲得記録を保存しました！");
+  }
+
   function renderSeriesProgress(ownedRows, catalogRows) {
     const ownedIds = new Set(ownedRows.map(row => Number(row.product_id)));
     const groups = {};
@@ -166,9 +199,11 @@
     if (!entries.length) return '<p class="empty-message">シリーズ名が登録された商品がまだありません。商品登録時に同じシリーズ名を設定すると達成率が表示されます。</p>';
     return entries.map(([name, value]) => {
       const percent = Math.round(value.owned / value.total * 100);
+      const complete = value.owned === value.total;
       return '<div class="series-progress"><div class="series-progress-head"><strong>' + esc(name) +
         '</strong><span>' + value.owned + ' / ' + value.total + '種類 ・ ' + percent + '%</span></div>' +
-        '<div class="series-progress-track"><span style="width:' + percent + '%"></span></div></div>';
+        '<div class="series-progress-track"><span style="width:' + percent + '%"></span></div>' +
+        (complete ? '<span class="series-complete">🏆 コンプリート！</span>' : '') + '</div>';
     }).join("");
   }
 
@@ -404,7 +439,7 @@
     ]);
     const [postsResult, itemsResult, catalogResult] = await Promise.all([
       db.from("posts").select("content,image_path,created_at").eq("user_id",user.id).eq("status","published").order("created_at",{ascending:false}).limit(20),
-      db.from("user_collections").select("product_id,status,products(id,name,maker,category,image_url,series_name)").eq("user_id",user.id),
+      db.from("user_collections").select("product_id,status,acquired_at,duplicate_count,products(id,name,maker,category,image_url,series_name)").eq("user_id",user.id),
       db.from("products").select("id,name,series_name").eq("status","published")
     ]);
     if (itemsResult.error) return notify("コレクションを表示できませんでした：" + itemsResult.error.message);
@@ -648,6 +683,10 @@
     $("#profileButton").addEventListener("click", () => user ? window.gachaGo("profile") : showAuth("login"));
     $("#notificationButton").addEventListener("click", openNotifications);
     $("#socialDialogContent").addEventListener("click", notificationClick);
+    $("#collectionRecords").addEventListener("click", event => {
+      const button = event.target.closest("[data-save-record]");
+      if (button) saveCollectionRecord(button.closest("[data-record-product]"));
+    });
     $("#authSwitch").addEventListener("click", () => showAuth(mode === "login" ? "signup" : "login"));
     $("#authForm").addEventListener("submit", authSubmit);
     $("#createPostForm").addEventListener("submit", createPost);
