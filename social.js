@@ -10,6 +10,7 @@
   let mode = "login";
   let loadingFeed = false;
   let feedFilter = "all";
+  let collectionRows = [];
 
   function esc(v) {
     return String(v == null ? "" : v).replace(/[&<>"']/g, function(c) {
@@ -56,7 +57,8 @@
     $("#profileButton").textContent = user ? "●" : "○";
     if ($("#productSubmitAuthNotice")) $("#productSubmitAuthNotice").hidden = !!user;
     if ($("#productSubmissionForm")) $("#productSubmissionForm").hidden = !user;
-    if (user) { loadProfile(); refreshNotificationBadge(); }
+    if (user) { loadCollection().then(loadProfile); refreshNotificationBadge(); }
+    else { collectionRows = []; window.gachaSetCollectionData?.([], []); }
   }
 
   async function authSubmit(event) {
@@ -106,6 +108,68 @@
       button.classList.toggle("selected", selected);
       button.setAttribute("aria-pressed", selected ? "true" : "false");
     });
+  }
+
+  async function loadCollection() {
+    if (!user) { collectionRows = []; window.gachaSetCollectionData?.([], []); return; }
+    const result = await db.from("user_collections").select("product_id,status").eq("user_id", user.id);
+    if (result.error) { console.error("Collection load:", result.error); return notify("コレクションを読み込めませんでした：" + result.error.message); }
+    collectionRows = result.data || [];
+    window.gachaSetCollectionData?.(
+      collectionRows.filter(row => row.status === "owned").map(row => row.product_id),
+      collectionRows.filter(row => row.status === "wishlist").map(row => row.product_id)
+    );
+  }
+
+  async function setCollectionStatus(productId, status) {
+    if (!user) { showAuth("login"); return; }
+    const current = collectionRows.find(row => Number(row.product_id) === Number(productId));
+    const nextStatus = current && current.status === status ? null : status;
+    const result = nextStatus
+      ? await db.from("user_collections").upsert(
+          {user_id:user.id, product_id:Number(productId), status:nextStatus},
+          {onConflict:"user_id,product_id"}
+        )
+      : await db.from("user_collections").delete().eq("user_id",user.id).eq("product_id",Number(productId));
+    if (result.error) return notify("登録を更新できませんでした：" + result.error.message);
+    await loadCollection();
+    notify(nextStatus === "owned" ? "持っている商品に登録しました！" :
+      nextStatus === "wishlist" ? "ほしい物リストに追加しました！" : "リストから削除しました。");
+  }
+
+  window.gachaToggleCollection = (productId, kind) =>
+    setCollectionStatus(productId, kind === "owned" ? "owned" : "wishlist");
+
+  function renderCollectionProducts(rows) {
+    return rows.map(row => {
+      const p = profileOf(row.products);
+      if (!p) return "";
+      const visual = p.image_url
+        ? '<img src="' + esc(p.image_url) + '" alt="' + esc(p.name) + '" loading="lazy">'
+        : '<span>🎁</span>';
+      return '<article class="profile-collection-card"><div class="profile-collection-art">' + visual +
+        '</div><div><strong>' + esc(p.name) + '</strong><small>' + esc(p.maker || "メーカー不明") + '</small></div></article>';
+    }).join("") || '<p class="empty-message">まだ登録されていません。</p>';
+  }
+
+  function renderSeriesProgress(ownedRows, catalogRows) {
+    const ownedIds = new Set(ownedRows.map(row => Number(row.product_id)));
+    const groups = {};
+    (catalogRows || []).forEach(product => {
+      const name = (product.series_name || "").trim();
+      if (!name) return;
+      if (!groups[name]) groups[name] = {total:0, owned:0};
+      groups[name].total += 1;
+      if (ownedIds.has(Number(product.id))) groups[name].owned += 1;
+    });
+    const entries = Object.entries(groups);
+    if (!entries.length) return '<p class="empty-message">シリーズ名が登録された商品がまだありません。商品登録時に同じシリーズ名を設定すると達成率が表示されます。</p>';
+    return entries.map(([name, value]) => {
+      const percent = Math.round(value.owned / value.total * 100);
+      return '<div class="series-progress"><div class="series-progress-head"><strong>' + esc(name) +
+        '</strong><span>' + value.owned + ' / ' + value.total + '種類 ・ ' + percent + '%</span></div>' +
+        '<div class="series-progress-track"><span style="width:' + percent + '%"></span></div></div>';
+    }).join("");
   }
 
   async function loadFeed() {
@@ -337,11 +401,22 @@
       db.from("follows").select("*",{count:"exact",head:true}).eq("following_id",user.id),
       db.from("follows").select("*",{count:"exact",head:true}).eq("follower_id",user.id)
     ]);
-    const postsResult = await db.from("posts").select("content,image_path,created_at").eq("user_id",user.id).eq("status","published").order("created_at",{ascending:false}).limit(20);
+    const [postsResult, itemsResult, catalogResult] = await Promise.all([
+      db.from("posts").select("content,image_path,created_at").eq("user_id",user.id).eq("status","published").order("created_at",{ascending:false}).limit(20),
+      db.from("user_collections").select("product_id,status,products(id,name,maker,category,image_url,series_name)").eq("user_id",user.id),
+      db.from("products").select("id,name,series_name").eq("status","published")
+    ]);
+    if (itemsResult.error) return notify("コレクションを表示できませんでした：" + itemsResult.error.message);
+    const items = itemsResult.data || [];
+    const ownedItems = items.filter(row => row.status === "owned");
+    const wishItems = items.filter(row => row.status === "wishlist");
     $("#profilePanel").innerHTML =
       '<div class="profile-hero">' + avatar(p) + '<h2>' + esc(p.display_name) + '</h2><p class="auth-user-chip">@' + esc(p.username) + '</p><p class="profile-bio">' + esc(p.bio || "自己紹介はまだありません。") + '</p>' +
       '<div class="profile-stats"><div><strong>' + (counts[0].count || 0) + '</strong><span>投稿</span></div><div><strong>' + (counts[1].count || 0) + '</strong><span>フォロワー</span></div><div><strong>' + (counts[2].count || 0) + '</strong><span>フォロー</span></div></div>' +
       '<div class="profile-actions"><button id="editProfileButton">プロフィールを編集</button><button id="logoutButton">ログアウト</button></div></div>' +
+      '<h3 class="profile-section-title">コレクション (' + ownedItems.length + ')</h3><div class="profile-collection-grid">' + renderCollectionProducts(ownedItems) + '</div>' +
+      '<h3 class="profile-section-title">シリーズ達成率</h3><div class="series-progress-list">' + renderSeriesProgress(ownedItems, catalogResult.data || []) + '</div>' +
+      '<h3 class="profile-section-title">ほしい物リスト (' + wishItems.length + ')</h3><div class="profile-collection-grid">' + renderCollectionProducts(wishItems) + '</div>' +
       '<form id="profileEditForm" class="profile-edit" hidden><label class="form-label" for="editAvatar">プロフィールアイコン</label><input id="editAvatar" type="file" accept="image/*"><p class="form-hint">画像は5MB以下にしてください。選択しなければ現在のアイコンを維持します。</p><label class="form-label" for="editDisplayName">表示名</label><input id="editDisplayName" maxlength="30" required value="' + esc(p.display_name) + '">' +
       '<label class="form-label" for="editBio">自己紹介</label><textarea id="editBio" maxlength="300" rows="3">' + esc(p.bio || "") + '</textarea><button class="dark-button" type="submit">保存する</button></form>' +
       '<h3 class="profile-section-title">自分の投稿</h3><div class="timeline-feed">' +
@@ -385,7 +460,6 @@
       await loadProfile();
     });
   }
-
 
 
   async function openProductPosts(productId) {
@@ -539,12 +613,19 @@
       db.from("follows").select("*",{count:"exact",head:true}).eq("following_id",id),
       db.from("follows").select("*",{count:"exact",head:true}).eq("follower_id",id)
     ]);
-    const follow = await db.from("follows").select("follower_id").eq("follower_id",user.id).eq("following_id",id).maybeSingle();
-    const posts = await db.from("posts").select("content,image_path,created_at").eq("user_id",id).eq("status","published").order("created_at",{ascending:false}).limit(20);
+    const [follow, posts, itemsResult, catalogResult] = await Promise.all([
+      db.from("follows").select("follower_id").eq("follower_id",user.id).eq("following_id",id).maybeSingle(),
+      db.from("posts").select("content,image_path,created_at").eq("user_id",id).eq("status","published").order("created_at",{ascending:false}).limit(20),
+      db.from("user_collections").select("product_id,status,products(id,name,maker,category,image_url,series_name)").eq("user_id",id).eq("status","owned"),
+      db.from("products").select("id,name,series_name").eq("status","published")
+    ]);
+    const ownedItems = itemsResult.data || [];
     const isFollowing = !!follow.data;
     $("#socialDialogContent").innerHTML = '<div class="profile-hero">' + avatar(p) + '<h2>' + esc(p.display_name) + '</h2><p class="auth-user-chip">@' + esc(p.username) + '</p><p class="profile-bio">' + esc(p.bio || "") + '</p>' +
       '<div class="profile-stats"><div><strong>' + (counts[0].count || 0) + '</strong><span>投稿</span></div><div><strong>' + (counts[1].count || 0) + '</strong><span>フォロワー</span></div><div><strong>' + (counts[2].count || 0) + '</strong><span>フォロー</span></div></div>' +
       (id !== user.id ? '<button class="follow-button ' + (isFollowing ? "following" : "") + '" id="publicFollowButton">' + (isFollowing ? "フォロー中（解除）" : "フォローする") + '</button>' : "") + '</div>' +
+      '<h3 class="profile-section-title">コレクション (' + ownedItems.length + ')</h3><div class="profile-collection-grid">' + renderCollectionProducts(ownedItems) + '</div>' +
+      '<h3 class="profile-section-title">シリーズ達成率</h3><div class="series-progress-list">' + renderSeriesProgress(ownedItems, catalogResult.data || []) + '</div>' +
       '<h3 class="profile-section-title">投稿</h3><div class="timeline-feed">' +
       ((posts.data || []).map(post => '<article class="post-card">' + (post.content ? '<p class="post-content">' + esc(post.content) + '</p>' : "") + (post.image_path ? '<img class="post-image" src="' + esc(post.image_path) + '" alt="">' : "") + '<small class="post-time">' + esc(dateLabel(post.created_at)) + '</small></article>').join("") || '<p class="empty-message">まだ投稿はありません。</p>') + '</div>';
     $("#socialDialog").showModal();
