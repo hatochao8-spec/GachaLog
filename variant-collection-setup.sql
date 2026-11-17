@@ -24,7 +24,11 @@ using (status = 'published' or submitted_by = auth.uid());
 drop policy if exists "Users can submit variants" on public.product_variants;
 create policy "Users can submit variants"
 on public.product_variants for insert to authenticated
-with check (auth.uid() = submitted_by and status = 'pending');
+with check (
+  auth.uid() = submitted_by
+  and status = 'pending'
+  and exists (select 1 from public.products p where p.id = product_id and p.status = 'published')
+);
 
 drop policy if exists "GachaLog admin manages variants" on public.product_variants;
 create policy "GachaLog admin manages variants"
