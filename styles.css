@@ -135,3 +135,21 @@ dialog{border:0;border-radius:20px;padding:22px;width:calc(100% - 34px);max-widt
 .collection-record-card input{width:100%;min-width:0;border:1px solid var(--line);border-radius:9px;padding:9px;font:inherit;font-size:12px;color:var(--ink);background:#fff}
 .collection-record-card .small-button{justify-self:end;padding:9px 15px}
 .series-complete{display:inline-block;margin-top:7px;padding:5px 9px;border-radius:20px;background:#edf3e9;color:#526b4f;font-size:10px;font-weight:700}
+
+
+/* Capsule variant catalog and ownership */
+.variant-section{margin:22px 0;padding:15px;background:#f6f7f3;border:1px solid var(--line);border-radius:15px}
+.variant-section h3{font-size:14px;margin:0 0 5px}
+.variant-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:12px}
+.variant-card{display:grid;gap:8px;min-width:0;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px}
+.variant-card-main{display:grid;gap:7px}
+.variant-card-main img,.variant-placeholder{width:100%;height:100px;object-fit:cover;border-radius:8px;background:#edf1ea;display:grid;place-items:center}
+.variant-placeholder{font-size:28px}
+.variant-card-main strong{font-size:11px;line-height:1.5;overflow-wrap:anywhere}
+.variant-card label,.variant-submit-form label{display:grid;gap:4px;font-size:10px;color:var(--muted)}
+.variant-card input,.variant-submit-form input{width:100%;min-width:0;border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit;font-size:11px;background:white;color:var(--ink)}
+.variant-card .small-button{width:100%;padding:8px}
+.variant-submit-form{display:grid;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.variant-submit-form>strong{font-size:12px}
+.variant-submit-form .dark-button{margin:0}
+.variant-progress{font-size:11px;font-weight:700;color:var(--deep);margin-top:12px}
