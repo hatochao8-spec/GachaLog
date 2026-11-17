@@ -167,7 +167,7 @@
         '<label>獲得日<input type="date" data-record-date value="' + esc(row.acquired_at || "") + '"></label>' +
         '<label>ダブり数<input type="number" min="0" max="999" step="1" data-record-duplicates value="' + Number(row.duplicate_count || 0) + '"></label>' +
         '<small class="form-hint">ダブり数は、最初の1個を除いた追加分です</small>' +
-        '<button type="button" class="small-button primary" data-save-record>記録を保存</button></article>';
+        '<button type="button" class="small-button primary" data-save-record>商品記録を保存</button><button type="button" class="small-button" data-open-variants="' + Number(row.product_id) + '">カプセル種類を管理</button></article>';
     }).join("") || '<p class="empty-state">「持ってる」に登録した商品がここに表示されます。</p>';
   }
 
@@ -756,6 +756,8 @@
     $("#notificationButton").addEventListener("click", openNotifications);
     $("#socialDialogContent").addEventListener("click", notificationClick);
     $("#collectionRecords").addEventListener("click", event => {
+      const openButton = event.target.closest("[data-open-variants]");
+      if (openButton) { openProductPosts(Number(openButton.dataset.openVariants)); return; }
       const button = event.target.closest("[data-save-record]");
       if (button) saveCollectionRecord(button.closest("[data-record-product]"));
     });
