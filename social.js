@@ -576,19 +576,25 @@
         if (!user) return showAuth("login");
         const card = button.closest("[data-variant-card]");
         const variantId = Number(card.dataset.variantCard);
-        const wasOwned = button.dataset.owned === "1";
         const date = card.querySelector("[data-variant-date]").value || null;
         const duplicates = Number(card.querySelector("[data-variant-duplicates]").value);
         if (!Number.isInteger(duplicates) || duplicates < 0 || duplicates > 999) return notify("ダブり数は0〜999で入力してください。");
         button.disabled = true;
         try {
-          const result = wasOwned
-            ? await db.from("user_variant_collections").delete().eq("user_id",user.id).eq("variant_id",variantId)
-            : await db.from("user_variant_collections").upsert({user_id:user.id,variant_id:variantId,acquired_at:date,duplicate_count:duplicates},{onConflict:"user_id,variant_id"});
+          const result = await db.from("user_variant_collections").upsert({user_id:user.id,variant_id:variantId,acquired_at:date,duplicate_count:duplicates},{onConflict:"user_id,variant_id"});
           if (result.error) throw result.error;
           await openProductPosts(productId);
-          notify(wasOwned ? "所持登録を解除しました。" : "カプセルをコレクションに追加しました！");
+          notify("カプセルの獲得記録を保存しました！");
         } catch (error) { notify("更新できませんでした：" + error.message); button.disabled = false; }
+      }));
+      content.querySelectorAll("[data-variant-remove]").forEach(button => button.addEventListener("click", async () => {
+        const card = button.closest("[data-variant-card]");
+        const variantId = Number(card.dataset.variantCard);
+        button.disabled = true;
+        const result = await db.from("user_variant_collections").delete().eq("user_id",user.id).eq("variant_id",variantId);
+        if (result.error) { notify("解除できませんでした：" + result.error.message); button.disabled = false; return; }
+        await openProductPosts(productId);
+        notify("所持登録を解除しました。");
       }));
     } catch (error) {
       console.error("Product posts:", error);
