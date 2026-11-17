@@ -43,7 +43,26 @@
         <div class="search-wrap"><span>⌕</span><input id="catalogSearch" placeholder="商品名・メーカーで検索" aria-label="商品検索"></div>
         <div class="chips"><button class="chip selected" data-filter="すべて">すべて</button><button class="chip" data-filter="動物">動物</button><button class="chip" data-filter="雑貨">雑貨</button><button class="chip" data-filter="ミニチュア">ミニチュア</button></div>
         <div class="result-count" id="resultCount"></div>
+        <div class="catalog-submit-cta"><div><strong>図鑑に商品を追加しよう</strong><p class="muted">まだ登録されていない商品を申請できます。</p></div><button class="dark-button" type="button" data-go="submitProduct">＋ 商品を登録</button></div>
         <div class="product-grid" id="productGrid"></div>
+      </section>
+
+      <section class="view" id="submitProductView">
+        <div class="page-title"><p class="eyebrow">ADD TO CATALOG</p><h1>商品を登録申請</h1><p class="muted">あなたの見つけたガチャを、みんなの図鑑に追加しよう。</p></div>
+        <div id="productSubmitAuthNotice" class="empty-panel"><h2>ログインが必要です</h2><p class="muted">商品を登録するにはアカウントにログインしてください。</p><button class="dark-button" id="productSubmitLoginButton" type="button">ログイン・新規登録</button></div>
+        <form id="productSubmissionForm" class="post-form" hidden>
+          <p class="form-hint">商品名以外は分かる範囲で入力してね。申請内容は管理者の確認後に図鑑へ公開されます。</p>
+          <label class="form-label" for="submissionName">商品名（必須）</label><input id="submissionName" maxlength="100" required placeholder="例：ふわふわアニマルマスコット">
+          <label class="form-label" for="submissionMaker">メーカー（任意）</label><input id="submissionMaker" maxlength="80" placeholder="例：バンダイ">
+          <label class="form-label" for="submissionPrice">価格・円（任意）</label><input id="submissionPrice" type="number" min="0" max="100000" step="1" placeholder="例：300">
+          <label class="form-label" for="submissionCategory">カテゴリー（任意）</label><select id="submissionCategory"><option value="その他">その他</option><option value="動物">動物</option><option value="雑貨">雑貨</option><option value="ミニチュア">ミニチュア</option><option value="キャラクター">キャラクター</option></select>
+          <label class="form-label" for="submissionRelease">発売時期（任意）</label><input id="submissionRelease" maxlength="30" placeholder="例：2026年11月">
+          <label class="form-label" for="submissionDescription">商品説明（任意）</label><textarea id="submissionDescription" maxlength="1000" rows="4" placeholder="商品の特徴など"></textarea>
+          <label class="form-label" for="submissionImage">商品画像（任意）</label><input id="submissionImage" type="file" accept="image/*">
+          <p class="form-hint">自分で撮影した写真、または掲載許可のある画像を使ってね。画像は5MB以下。</p>
+          <button class="dark-button submit-post" type="submit">商品を申請する</button>
+          <p class="form-hint" id="productSubmissionMessage" role="status"></p>
+        </form>
       </section>
 
       <section class="view" id="collectionView">
