@@ -104,7 +104,7 @@
     feed.innerHTML = '<p class="empty-message">投稿を読み込んでいます...</p>';
     try {
       const result = await db.from("posts")
-        .select("id,user_id,content,image_path,product_id,created_at,profiles(username,display_name,avatar_url),products(name,maker)")
+        .select("id,user_id,content,image_path,product_id,created_at,profiles!posts_user_id_fkey(username,display_name,avatar_url),products(name,maker)")
         .eq("status", "published").order("created_at", {ascending:false}).limit(50);
       if (result.error) throw result.error;
       const posts = result.data || [];
