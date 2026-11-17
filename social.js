@@ -54,6 +54,8 @@
     $("#createPostForm").hidden = !user;
     $("#profileAuthNotice").hidden = !!user;
     $("#profileButton").textContent = user ? "●" : "○";
+    if ($("#productSubmitAuthNotice")) $("#productSubmitAuthNotice").hidden = !!user;
+    if ($("#productSubmissionForm")) $("#productSubmissionForm").hidden = !user;
     if (user) { loadProfile(); refreshNotificationBadge(); }
   }
 
@@ -180,6 +182,61 @@
     if (result.error) { console.warn(result.error); return; }
     $("#postProduct").innerHTML = '<option value="">商品を選択しない</option>' +
       (result.data || []).map(p => '<option value="' + p.id + '">' + esc(p.name) + (p.maker ? '（' + esc(p.maker) + '）' : "") + '</option>').join("");
+  }
+
+  async function submitProduct(event) {
+    event.preventDefault();
+    if (!user) return showAuth("login");
+    const name = $("#submissionName").value.trim();
+    if (!name) return notify("商品名を入力してください。");
+    const file = $("#submissionImage").files[0];
+    if (file && !file.type.startsWith("image/")) return notify("画像ファイルを選んでください。");
+    if (file && file.size > 5 * 1024 * 1024) return notify("画像は5MB以下にしてください。");
+    const button = $("#productSubmissionForm").querySelector('button[type="submit"]');
+    const message = $("#productSubmissionMessage");
+    button.disabled = true;
+    button.textContent = "申請しています...";
+    message.textContent = "";
+    try {
+      const duplicate = await db.from("products").select("id,name").eq("status","published").ilike("name",name).limit(1);
+      if (duplicate.error) throw duplicate.error;
+      if (duplicate.data && duplicate.data.length) throw new Error("同じ名前の商品が公開済みです。図鑑を確認してください。");
+      let imageUrl = null;
+      if (file) {
+        const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g,"") || "jpg";
+        const path = user.id + "/products/" + Date.now() + "." + ext;
+        const upload = await db.storage.from("gachalog-posts").upload(path,file,{cacheControl:"3600",upsert:false,contentType:file.type});
+        if (upload.error) throw upload.error;
+        imageUrl = db.storage.from("gachalog-posts").getPublicUrl(path).data.publicUrl;
+      }
+      const release = $("#submissionRelease").value.trim();
+      const priceValue = $("#submissionPrice").value.trim();
+      const payload = {
+        name,
+        maker: $("#submissionMaker").value.trim() || null,
+        price: priceValue ? Number(priceValue) : null,
+        category: $("#submissionCategory").value || "その他",
+        release_month: release || null,
+        description: $("#submissionDescription").value.trim() || null,
+        image_url: imageUrl,
+        image_source: imageUrl ? "user_upload" : null,
+        source_url: "user-submission://" + crypto.randomUUID(),
+        submitted_by: user.id,
+        status: "pending"
+      };
+      const inserted = await db.from("products").insert(payload);
+      if (inserted.error) throw inserted.error;
+      $("#productSubmissionForm").reset();
+      message.textContent = "申請を受け付けました。管理者の確認後に図鑑へ公開されます。";
+      notify("商品を申請しました！");
+    } catch (error) {
+      console.error("Product submission:",error);
+      message.textContent = "申請できませんでした：" + (error.message || "エラー");
+      notify("商品申請に失敗しました。");
+    } finally {
+      button.disabled = false;
+      button.textContent = "商品を申請する";
+    }
   }
 
   async function createPost(event) {
@@ -512,6 +569,15 @@
     $("#authSwitch").addEventListener("click", () => showAuth(mode === "login" ? "signup" : "login"));
     $("#authForm").addEventListener("submit", authSubmit);
     $("#createPostForm").addEventListener("submit", createPost);
+    $("#productSubmitLoginButton").addEventListener("click", () => showAuth("login"));
+    $("#productSubmissionForm").addEventListener("submit", submitProduct);
+    $("#submissionImage").addEventListener("change", () => {
+      const file = $("#submissionImage").files[0];
+      if (file && file.size > 5 * 1024 * 1024) {
+        $("#submissionImage").value = "";
+        notify("画像は5MB以下にしてください。");
+      }
+    });
     $("#timelineFeed").addEventListener("click", feedClick);
     $("#userSearchForm").addEventListener("submit", searchUsers);
     $("#userSearchResults").addEventListener("click", event => {
