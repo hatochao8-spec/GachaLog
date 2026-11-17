@@ -142,7 +142,8 @@ function showDetail(p) {
     <p>${escapeHTML(p.desc)}</p><p>${escapeHTML(p.maker)}　/　${escapeHTML(p.price)}</p>
     ${p.release_date || p.release_month ? `<p>発売：${escapeHTML(p.release_date || p.release_month)}</p>` : ""}
     <div class="dialog-actions"><button class="primary" id="dialogOwn">${owned.includes(p.id) ? "登録を解除" : "コレクションに登録"}</button>
-    <button id="dialogWish">${wishes.includes(p.id) ? "お気に入り解除" : "♡ 欲しいものリスト"}</button></div></div>`;
+    <button id="dialogWish">${wishes.includes(p.id) ? "お気に入り解除" : "♡ 欲しいものリスト"}</button></div>
+    <button class="product-community-button" id="dialogProductPosts">この商品のみんなの投稿を見る</button></div>`;
   $("#productDialog").showModal();
   $("#dialogOwn").onclick = () => {
     owned = owned.includes(p.id) ? owned.filter(x => x !== p.id) : [...owned, p.id];
@@ -152,6 +153,10 @@ function showDetail(p) {
   $("#dialogWish").onclick = () => {
     wishes = wishes.includes(p.id) ? wishes.filter(x => x !== p.id) : [...wishes, p.id];
     save(); $("#productDialog").close(); toast("欲しいものリストを更新しました");
+  };
+  $("#dialogProductPosts").onclick = () => {
+    $("#productDialog").close();
+    window.gachaShowProductPosts?.(p.id);
   };
 }
 function go(tab) {
