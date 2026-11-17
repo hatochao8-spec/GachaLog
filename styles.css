@@ -83,3 +83,15 @@ dialog{border:0;border-radius:20px;padding:22px;width:calc(100% - 34px);max-widt
 .user-result-info small{font-size:10px;color:var(--muted);overflow-wrap:anywhere}
 .user-result-info .user-result-bio{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .user-result-arrow{font-size:22px;color:var(--muted)}
+
+.topbar-actions{display:flex;align-items:center;gap:8px}
+.notification-button{position:relative}
+.notification-button span{position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;padding:0 4px;border-radius:20px;background:#b84d45;color:#fff;font-size:9px;line-height:17px;font-weight:700}
+.notifications-panel h2{font-size:20px;margin:18px 0 14px}
+.notification-list{display:grid;gap:8px;max-height:65vh;overflow:auto}
+.notification-item{width:100%;display:flex;align-items:center;gap:10px;text-align:left;border:1px solid var(--line);background:#fff;border-radius:12px;padding:11px}
+.notification-item.unread{background:#f3f6f1;border-color:#dce6d9}
+.notification-copy{display:grid;gap:4px;min-width:0;flex:1}
+.notification-copy strong{font-size:11px;line-height:1.6;font-weight:600}
+.notification-copy small{font-size:10px;color:var(--muted)}
+.notification-dot{width:8px;height:8px;border-radius:50%;background:#71866e;flex:none}
