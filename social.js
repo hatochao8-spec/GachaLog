@@ -160,7 +160,7 @@
           '<div class="post-head">' + avatar(p) + '<div class="post-author"><strong>' + esc(p && p.display_name || "ガチャ好き") + '</strong><small>@' + esc(p && p.username || "user") + '</small></div><time class="post-time">' + esc(dateLabel(post.created_at)) + '</time></div>' +
           (post.content ? '<p class="post-content">' + esc(post.content) + '</p>' : "") +
           (post.image_path ? '<img class="post-image" src="' + esc(post.image_path) + '" alt="ユーザー投稿画像" loading="lazy">' : "") +
-          (product ? '<div class="post-product">🎁 関連商品：' + esc(product.name) + (product.maker ? ' ・ ' + esc(product.maker) : "") + '</div>' : "") +
+          (product ? '<button type="button" class="post-product" data-action="product" data-product-id="' + post.product_id + '">🎁 関連商品：' + esc(product.name) + (product.maker ? ' ・ ' + esc(product.maker) : "") + '　›</button>' : "") +
           '<div class="post-actions"><button type="button" data-action="like" class="' + (liked ? "liked" : "") + '">♡ ' + postLikes.length + ' いいね</button><button type="button" data-action="comments">コメント ' + postComments.length + '件</button>' +
           (user && user.id !== post.user_id ? '<button type="button" data-action="profile" data-user-id="' + esc(post.user_id) + '">プロフィール</button>' : "") + '</div>' +
           '<div class="post-comments" ' + (postComments.length ? "" : "hidden") + '>' + commentHTML + '</div>' +
@@ -236,6 +236,10 @@
     if (action === "profile") {
       if (user) await openPublicProfile(button.dataset.userId);
       else showAuth("login");
+      return;
+    }
+    if (action === "product") {
+      await openProductPosts(Number(button.dataset.productId));
       return;
     }
     if (!user) return showAuth("login");
@@ -325,6 +329,39 @@
     });
   }
 
+
+
+  async function openProductPosts(productId) {
+    if (!Number.isFinite(productId) || productId <= 0) return;
+    const content = $("#socialDialogContent");
+    content.innerHTML = '<div class="product-posts-panel"><p class="empty-message">商品情報と投稿を読み込んでいます...</p></div>';
+    $("#socialDialog").showModal();
+    try {
+      const [productResult, postsResult] = await Promise.all([
+        db.from("products").select("id,name,maker,category,image_url").eq("id", productId).eq("status", "published").maybeSingle(),
+        db.from("posts").select("id,user_id,content,image_path,created_at,profiles!posts_user_id_fkey(username,display_name,avatar_url)").eq("product_id", productId).eq("status", "published").order("created_at", {ascending:false}).limit(50)
+      ]);
+      if (productResult.error) throw productResult.error;
+      if (postsResult.error) throw postsResult.error;
+      if (!productResult.data) throw new Error("商品が見つかりませんでした。");
+      const product = productResult.data;
+      const posts = postsResult.data || [];
+      content.innerHTML = '<div class="product-posts-panel"><p class="eyebrow">PRODUCT COMMUNITY</p><h2>' + esc(product.name) + '</h2><p class="product-posts-maker">' + esc(product.maker || "メーカー不明") + '</p><p class="product-posts-count">' + posts.length + '件の投稿</p><div class="product-posts-list">' +
+        (posts.map(post => {
+          const profile = profileOf(post.profiles);
+          return '<article class="post-card">' +
+            '<div class="post-head">' + avatar(profile) + '<div class="post-author"><strong>' + esc(profile && profile.display_name || "ガチャ好き") + '</strong><small>@' + esc(profile && profile.username || "user") + '</small></div><time class="post-time">' + esc(dateLabel(post.created_at)) + '</time></div>' +
+            (post.content ? '<p class="post-content">' + esc(post.content) + '</p>' : '') +
+            (post.image_path ? '<img class="post-image" src="' + esc(post.image_path) + '" alt="ユーザー投稿画像" loading="lazy">' : '') +
+            '</article>';
+        }).join("") || '<p class="empty-message">この商品に関する投稿はまだありません。</p>') +
+        '</div><button type="button" class="dark-button product-post-back" id="productPostsBack">閉じる</button></div>';
+      $("#productPostsBack").addEventListener("click", () => $("#socialDialog").close());
+    } catch (error) {
+      console.error("Product posts:", error);
+      content.innerHTML = '<div class="product-posts-panel"><h2>商品投稿を読み込めませんでした</h2><p class="empty-message">' + esc(error.message || "") + '</p></div>';
+    }
+  }
 
   function notificationText(item) {
     const actor = profileOf(item.profiles);
@@ -502,6 +539,7 @@
     });
   }
 
+  window.gachaShowProductPosts = openProductPosts;
   window.gachaLoadTimeline = loadFeed;
   window.gachaLoadProfile = loadProfile;
   window.openGachaProfile = () => user ? window.gachaGo("profile") : showAuth("login");
