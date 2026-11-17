@@ -111,3 +111,18 @@ dialog{border:0;border-radius:20px;padding:22px;width:calc(100% - 34px);max-widt
 .catalog-submit-cta .muted{font-size:10px;margin-top:4px}
 .catalog-submit-cta .dark-button{margin:0;white-space:nowrap;padding:10px 12px}
 #productSubmissionForm input[type="number"],#productSubmissionForm input[type="text"],#productSubmissionForm input[type="file"],#productSubmissionForm select,#productSubmissionForm textarea{width:100%;border:1px solid var(--line);background:#fff;border-radius:10px;padding:12px;font:inherit;font-size:12px;color:var(--ink)}
+
+/* Cloud-synced collection and series progress */
+.profile-collection-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.profile-collection-card{display:flex;align-items:center;gap:9px;min-width:0;padding:9px;background:#fff;border:1px solid var(--line);border-radius:12px}
+.profile-collection-art{width:54px;height:54px;flex:none;border-radius:9px;background:#edf1ea;display:grid;place-items:center;overflow:hidden;font-size:22px}
+.profile-collection-art img{width:100%;height:100%;object-fit:cover}
+.profile-collection-card>div:last-child{min-width:0;display:grid;gap:4px}
+.profile-collection-card strong{font-size:10px;line-height:1.5;overflow-wrap:anywhere}
+.profile-collection-card small{font-size:9px;color:var(--muted)}
+.series-progress-list{display:grid;gap:12px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px}
+.series-progress-head{display:flex;justify-content:space-between;gap:8px;font-size:11px;margin-bottom:7px}
+.series-progress-head span{color:var(--muted);white-space:nowrap;font-size:10px}
+.series-progress-track{height:8px;background:#edf0ea;border-radius:20px;overflow:hidden}
+.series-progress-track span{display:block;height:100%;background:#71866e;border-radius:20px}
+#collectionView .product-grid{margin-bottom:12px}
