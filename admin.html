@@ -35,6 +35,15 @@
   <section id="dashboard" class="hidden">
     <div class="panel"><div class="top" style="margin:0"><div><h2 style="margin:0">確認待ちの商品</h2><p class="muted" style="margin:6px 0 0">公開するとGachaLogアプリに表示されます。</p></div><button id="logout" class="secondary">ログアウト</button></div></div>
     <div id="message" role="status"></div>
+    <div class="panel">
+      <h2>運営からカプセル種類を登録</h2>
+      <form id="adminVariantForm">
+        <label for="adminVariantProduct">対象商品</label><select id="adminVariantProduct" required><option value="">商品を読み込み中...</option></select>
+        <label for="adminVariantName">種類名</label><input id="adminVariantName" maxlength="100" required placeholder="例：白ねこ">
+        <label for="adminVariantImage">画像URL（任意）</label><input id="adminVariantImage" type="url" placeholder="https://...">
+        <div class="actions"><button class="primary" type="submit">公開登録する</button></div>
+      </form>
+    </div>
     <div id="pendingList"></div>
     <div class="panel"><h2>確認待ちのカプセル種類</h2><p class="muted">ユーザーから申請されたラインナップを確認して公開します。</p></div>
     <div id="pendingVariants"></div>
