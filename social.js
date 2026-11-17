@@ -334,6 +334,7 @@
   }
 
   window.gachaLoadTimeline = loadFeed;
+  window.gachaLoadProfile = loadProfile;
   window.openGachaProfile = () => user ? window.gachaGo("profile") : showAuth("login");
   document.addEventListener("DOMContentLoaded", async () => {
     bind();
