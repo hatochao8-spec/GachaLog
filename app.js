@@ -3,8 +3,8 @@ const SUPABASE_URL = "https://gwaqioappwunlmobsppb.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_8KL4NTUVD-qu5WtvwJ8o4A_8S8iJB7C";
 
 let products = [];
-let owned = JSON.parse(localStorage.getItem("gacha-owned") || "[]");
-let wishes = JSON.parse(localStorage.getItem("gacha-wishes") || "[]");
+let owned = [];
+let wishes = [];
 let activeFilter = "すべて";
 const $ = s => document.querySelector(s);
 
@@ -39,12 +39,13 @@ function normalizeProduct(row) {
     desc: row.description || "商品詳細は準備中です。",
     image_url: row.image_url || "",
     release_date: row.release_date || "",
-    release_month: row.release_month || ""
+    release_month: row.release_month || "",
+    series_name: row.series_name || ""
   };
 }
 async function loadProducts() {
   const endpoint = new URL(`${SUPABASE_URL}/rest/v1/products`);
-  endpoint.searchParams.set("select", "id,name,maker,price,category,release_date,release_month,description,image_url,status");
+  endpoint.searchParams.set("select", "id,name,maker,price,category,release_date,release_month,description,image_url,status,series_name");
   endpoint.searchParams.set("status", "eq.published");
   endpoint.searchParams.set("order", "id.desc");
 
@@ -73,11 +74,14 @@ async function loadProducts() {
   }
 }
 
-function save() {
-  localStorage.setItem("gacha-owned", JSON.stringify(owned));
-  localStorage.setItem("gacha-wishes", JSON.stringify(wishes));
+function save() { updateCounts(); }
+window.gachaSetCollectionData = (ownedIds, wishIds) => {
+  owned = (ownedIds || []).map(Number);
+  wishes = (wishIds || []).map(Number);
   updateCounts();
-}
+  renderCatalog();
+  renderCollection();
+};
 function updateCounts() {
   $("#homeOwned").textContent = owned.length;
   $("#homeWishes").textContent = wishes.length;
@@ -97,7 +101,8 @@ function productCard(p) {
     <div class="product-art" style="--art:${p.art}">${visual}<small class="mini-label">${escapeHTML(p.category.toUpperCase())}</small></div>
     <div class="product-body"><h3>${escapeHTML(p.name)}</h3><p>${escapeHTML(p.maker)} ・ ${escapeHTML(p.price)}</p>
     <div class="product-actions">
-      <button class="small-button ${owned.includes(p.id) ? "primary" : ""}" data-action="own" data-id="${p.id}">${owned.includes(p.id) ? "✓ 登録済み" : "+ コレクション"}</button>
+      <button class="small-button ${owned.includes(p.id) ? "primary" : ""}" data-action="own" data-id="${p.id}">${owned.includes(p.id) ? "✓ 持ってる" : "+ 持ってる"}</button>
+      <button class="small-button ${wishes.includes(p.id) ? "primary" : ""}" data-action="wish" data-id="${p.id}">${wishes.includes(p.id) ? "♥ 欲しい" : "♡ 欲しい"}</button>
       <button class="small-button" data-action="detail" data-id="${p.id}">詳細</button>
     </div></div></article>`;
 }
@@ -113,20 +118,22 @@ function renderCatalog() {
 }
 function renderCollection() {
   const list = products.filter(p => owned.includes(p.id));
+  const wishList = products.filter(p => wishes.includes(p.id));
   $("#collectionGrid").innerHTML = list.map(productCard).join("");
   $("#collectionEmpty").hidden = list.length > 0;
+  $("#wishlistGrid").innerHTML = wishList.map(productCard).join("");
+  $("#wishlistEmpty").hidden = wishList.length > 0;
   $("#collectionGrid").querySelectorAll("button").forEach(bindProductButton);
+  $("#wishlistGrid").querySelectorAll("button").forEach(bindProductButton);
 }
 function bindProductButton(btn) {
   btn.addEventListener("click", () => {
     const p = products.find(x => x.id === Number(btn.dataset.id));
     if (!p) return;
     if (btn.dataset.action === "own") {
-      owned = owned.includes(p.id) ? owned.filter(x => x !== p.id) : [...owned, p.id];
-      save();
-      renderCatalog();
-      renderCollection();
-      toast(owned.includes(p.id) ? "コレクションに登録しました" : "登録を解除しました");
+      window.gachaToggleCollection?.(p.id, "owned");
+    } else if (btn.dataset.action === "wish") {
+      window.gachaToggleCollection?.(p.id, "wishlist");
     } else {
       showDetail(p);
     }
@@ -141,18 +148,17 @@ function showDetail(p) {
     <span class="tag">${escapeHTML(p.category)}</span><h2>${escapeHTML(p.name)}</h2>
     <p>${escapeHTML(p.desc)}</p><p>${escapeHTML(p.maker)}　/　${escapeHTML(p.price)}</p>
     ${p.release_date || p.release_month ? `<p>発売：${escapeHTML(p.release_date || p.release_month)}</p>` : ""}
-    <div class="dialog-actions"><button class="primary" id="dialogOwn">${owned.includes(p.id) ? "登録を解除" : "コレクションに登録"}</button>
-    <button id="dialogWish">${wishes.includes(p.id) ? "お気に入り解除" : "♡ 欲しいものリスト"}</button></div>
+    <div class="dialog-actions"><button class="primary" id="dialogOwn">${owned.includes(p.id) ? "✓ 持ってる（解除）" : "＋ 持ってる"}</button>
+    <button id="dialogWish">${wishes.includes(p.id) ? "♥ 欲しい（解除）" : "♡ ほしい物リスト"}</button></div>
     <button class="product-community-button" id="dialogProductPosts">この商品のみんなの投稿を見る</button></div>`;
   $("#productDialog").showModal();
   $("#dialogOwn").onclick = () => {
-    owned = owned.includes(p.id) ? owned.filter(x => x !== p.id) : [...owned, p.id];
-    save(); renderCatalog(); renderCollection(); $("#productDialog").close();
-    toast("コレクションを更新しました");
+    $("#productDialog").close();
+    window.gachaToggleCollection?.(p.id, "owned");
   };
   $("#dialogWish").onclick = () => {
-    wishes = wishes.includes(p.id) ? wishes.filter(x => x !== p.id) : [...wishes, p.id];
-    save(); $("#productDialog").close(); toast("欲しいものリストを更新しました");
+    $("#productDialog").close();
+    window.gachaToggleCollection?.(p.id, "wishlist");
   };
   $("#dialogProductPosts").onclick = () => {
     $("#productDialog").close();
