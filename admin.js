@@ -139,6 +139,7 @@ $("loginForm").addEventListener("submit", async event => {
     $("loginMessage").textContent = "";
     showDashboard();
     await loadPending();
+    await loadPendingVariants();
   } catch (error) {
     $("loginMessage").textContent = `ログインエラー：${error.message}`;
   }
