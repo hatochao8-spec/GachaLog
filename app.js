@@ -160,8 +160,11 @@ function go(tab) {
   $("#" + tab + "View").classList.add("active");
   if (tab === "catalog") renderCatalog();
   if (tab === "collection") renderCollection();
+  if (tab === "timeline") window.gachaLoadTimeline?.();
+  if (tab === "profile") window.gachaLoadProfile?.();
   window.scrollTo(0, 0);
 }
+window.gachaGo = go;
 document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => go(b.dataset.tab)));
 document.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => go(b.dataset.go)));
 document.querySelectorAll(".chip").forEach(b => b.addEventListener("click", () => {
