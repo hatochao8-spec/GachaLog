@@ -256,7 +256,7 @@
       '<div class="profile-hero">' + avatar(p) + '<h2>' + esc(p.display_name) + '</h2><p class="auth-user-chip">@' + esc(p.username) + '</p><p class="profile-bio">' + esc(p.bio || "自己紹介はまだありません。") + '</p>' +
       '<div class="profile-stats"><div><strong>' + (counts[0].count || 0) + '</strong><span>投稿</span></div><div><strong>' + (counts[1].count || 0) + '</strong><span>フォロワー</span></div><div><strong>' + (counts[2].count || 0) + '</strong><span>フォロー</span></div></div>' +
       '<div class="profile-actions"><button id="editProfileButton">プロフィールを編集</button><button id="logoutButton">ログアウト</button></div></div>' +
-      '<form id="profileEditForm" class="profile-edit" hidden><label class="form-label" for="editDisplayName">表示名</label><input id="editDisplayName" maxlength="30" required value="' + esc(p.display_name) + '">' +
+      '<form id="profileEditForm" class="profile-edit" hidden><label class="form-label" for="editAvatar">プロフィールアイコン</label><input id="editAvatar" type="file" accept="image/*"><p class="form-hint">画像は5MB以下にしてください。選択しなければ現在のアイコンを維持します。</p><label class="form-label" for="editDisplayName">表示名</label><input id="editDisplayName" maxlength="30" required value="' + esc(p.display_name) + '">' +
       '<label class="form-label" for="editBio">自己紹介</label><textarea id="editBio" maxlength="300" rows="3">' + esc(p.bio || "") + '</textarea><button class="dark-button" type="submit">保存する</button></form>' +
       '<h3 class="profile-section-title">自分の投稿</h3><div class="timeline-feed">' +
       ((postsResult.data || []).map(post => '<article class="post-card">' + (post.content ? '<p class="post-content">' + esc(post.content) + '</p>' : "") + (post.image_path ? '<img class="post-image" src="' + esc(post.image_path) + '" alt="">' : "") + '<small class="post-time">' + esc(dateLabel(post.created_at)) + '</small></article>').join("") || '<p class="empty-message">まだ投稿はありません。</p>') + '</div>';
@@ -272,9 +272,26 @@
     });
     $("#profileEditForm").addEventListener("submit", async event => {
       event.preventDefault();
-      const result = await db.from("profiles").update({
-        display_name:$("#editDisplayName").value.trim(),bio:$("#editBio").value.trim()
-      }).eq("id",user.id);
+      const avatarFile = $("#editAvatar").files[0];
+      if (avatarFile && (!avatarFile.type.startsWith("image/") || avatarFile.size > 5 * 1024 * 1024)) {
+        return notify("アイコン画像は5MB以下の画像ファイルを選んでください。");
+      }
+      let avatarUrl = null;
+      if (avatarFile) {
+        const ext = (avatarFile.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+        const path = user.id + "/avatar-" + Date.now() + "." + ext;
+        const upload = await db.storage.from("gachalog-posts").upload(path, avatarFile, {
+          cacheControl:"3600", upsert:false, contentType:avatarFile.type
+        });
+        if (upload.error) return notify("画像をアップロードできませんでした：" + upload.error.message);
+        avatarUrl = db.storage.from("gachalog-posts").getPublicUrl(path).data.publicUrl;
+      }
+      const updates = {
+        display_name:$("#editDisplayName").value.trim(),
+        bio:$("#editBio").value.trim()
+      };
+      if (avatarUrl) updates.avatar_url = avatarUrl;
+      const result = await db.from("profiles").update(updates).eq("id",user.id);
       if (result.error) return notify("保存できませんでした：" + result.error.message);
       notify("プロフィールを更新しました！");
       await loadProfile();
