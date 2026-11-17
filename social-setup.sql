@@ -84,6 +84,15 @@ create trigger on_auth_user_created_gachalog
 after insert on auth.users
 for each row execute procedure public.handle_new_gachalog_user();
 
+-- 既存のAuthユーザーにもプロフィールを作成（既存の管理者アカウントも利用可能にする）
+insert into public.profiles (id, username, display_name)
+select
+  u.id,
+  'user_' || left(replace(u.id::text, '-', ''), 12),
+  coalesce(nullif(trim(u.raw_user_meta_data ->> 'display_name'), ''), 'ガチャ好き')
+from auth.users u
+on conflict (id) do nothing;
+
 -- updated_at 自動更新
 create or replace function public.set_gachalog_updated_at()
 returns trigger
