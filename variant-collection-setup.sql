@@ -55,7 +55,7 @@ alter table public.user_variant_collections enable row level security;
 drop policy if exists "Variant collections are publicly readable" on public.user_variant_collections;
 create policy "Variant collections are publicly readable"
 on public.user_variant_collections for select to anon, authenticated
-using (true);
+using (auth.uid() = user_id);
 drop policy if exists "Users manage their variant collection" on public.user_variant_collections;
 create policy "Users manage their variant collection"
 on public.user_variant_collections for all to authenticated
