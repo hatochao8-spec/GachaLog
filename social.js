@@ -9,6 +9,7 @@
   let user = null;
   let mode = "login";
   let loadingFeed = false;
+  let feedFilter = "all";
 
   function esc(v) {
     return String(v == null ? "" : v).replace(/[&<>"']/g, function(c) {
@@ -97,15 +98,39 @@
     }
   }
 
+  function updateFeedFilterUI() {
+    document.querySelectorAll("[data-feed-filter]").forEach(button => {
+      const selected = button.dataset.feedFilter === feedFilter;
+      button.classList.toggle("selected", selected);
+      button.setAttribute("aria-pressed", selected ? "true" : "false");
+    });
+  }
+
   async function loadFeed() {
     if (loadingFeed) return;
     loadingFeed = true;
     const feed = $("#timelineFeed");
     feed.innerHTML = '<p class="empty-message">投稿を読み込んでいます...</p>';
+    updateFeedFilterUI();
     try {
-      const result = await db.from("posts")
+      let query = db.from("posts")
         .select("id,user_id,content,image_path,product_id,created_at,profiles!posts_user_id_fkey(username,display_name,avatar_url),products(name,maker)")
-        .eq("status", "published").order("created_at", {ascending:false}).limit(50);
+        .eq("status", "published");
+      if (feedFilter === "following") {
+        if (!user) {
+          feed.innerHTML = '<div class="empty-panel"><h2>ログインが必要です</h2><p class="muted">フォロー中の投稿を見るにはログインしてください。</p><button class="dark-button" data-feed-login>ログインする</button></div>';
+          return;
+        }
+        const followed = await db.from("follows").select("following_id").eq("follower_id", user.id);
+        if (followed.error) throw followed.error;
+        const ids = (followed.data || []).map(row => row.following_id);
+        if (!ids.length) {
+          feed.innerHTML = '<div class="empty-panel"><h2>まだフォローしていません</h2><p class="muted">みんなの投稿から気になるユーザーをフォローしてみよう！</p></div>';
+          return;
+        }
+        query = query.in("user_id", ids);
+      }
+      const result = await query.order("created_at", {ascending:false}).limit(50);
       if (result.error) throw result.error;
       const posts = result.data || [];
       if (!posts.length) {
@@ -266,6 +291,8 @@
       const result = await db.auth.signOut();
       if (result.error) return notify(result.error.message);
       user = null;
+      if (feedFilter === "following") feedFilter = "all";
+      updateFeedFilterUI();
       updateAuthUI();
       notify("ログアウトしました。");
       window.gachaGo("timeline");
@@ -336,6 +363,13 @@
     $("#authForm").addEventListener("submit", authSubmit);
     $("#createPostForm").addEventListener("submit", createPost);
     $("#timelineFeed").addEventListener("click", feedClick);
+    document.querySelectorAll("[data-feed-filter]").forEach(button => button.addEventListener("click", () => {
+      feedFilter = button.dataset.feedFilter;
+      loadFeed();
+    }));
+    $("#timelineFeed").addEventListener("click", event => {
+      if (event.target.closest("[data-feed-login]")) showAuth("login");
+    });
     $("#timelineFeed").addEventListener("submit", commentSubmit);
     $("#postImage").addEventListener("change", () => {
       const file = $("#postImage").files[0];
