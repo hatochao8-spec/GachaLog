@@ -67,6 +67,39 @@ async function loadPending() {
     setMessage(`読み込みエラー：${error.message}\nRLS用SQLが未設定の場合も、このエラーになります。`, true);
   }
 }
+async function loadAdminVariantProducts() {
+  const select = $("adminVariantProduct");
+  if (!select) return;
+  try {
+    const products = await api("/rest/v1/products?select=id,name,maker&status=eq.published&order=name.asc&limit=1000");
+    select.innerHTML = '<option value="">商品を選択してください</option>' + products.map(p =>
+      `<option value="${p.id}">${escapeHTML(p.name)}${p.maker ? "（" + escapeHTML(p.maker) + "）" : ""}</option>`
+    ).join("");
+  } catch (error) {
+    select.innerHTML = '<option value="">商品を読み込めませんでした</option>';
+    setMessage("商品一覧を読み込めません：" + error.message,true);
+  }
+}
+$("adminVariantForm")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  const productId = Number($("adminVariantProduct").value);
+  const name = $("adminVariantName").value.trim();
+  const imageUrl = $("adminVariantImage").value.trim() || null;
+  if (!productId || !name) return setMessage("商品と種類名を入力してください。",true);
+  const button = event.submitter || $("adminVariantForm").querySelector('button[type="submit"]');
+  button.disabled = true;
+  try {
+    await api("/rest/v1/product_variants", {
+      method:"POST",
+      headers:{Prefer:"return=minimal"},
+      body:JSON.stringify({product_id:productId,name,image_url:imageUrl,status:"published",submitted_by:null})
+    });
+    $("adminVariantForm").reset();
+    setMessage("カプセル種類を公開登録しました！");
+    await loadPendingVariants();
+  } catch (error) { setMessage("登録できませんでした：" + error.message,true); }
+  finally { button.disabled = false; }
+});
 async function loadPendingVariants() {
   const target = $("pendingVariants");
   if (!target) return;
@@ -140,6 +173,7 @@ $("loginForm").addEventListener("submit", async event => {
     showDashboard();
     await loadPending();
     await loadPendingVariants();
+    await loadAdminVariantProducts();
   } catch (error) {
     $("loginMessage").textContent = `ログインエラー：${error.message}`;
   }
@@ -154,4 +188,5 @@ if (accessToken) {
   showDashboard();
   loadPending();
   loadPendingVariants();
+  loadAdminVariantProducts();
 }
