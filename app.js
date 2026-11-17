@@ -177,7 +177,7 @@ $("#homeSearch").addEventListener("keydown", e => {
     renderCatalog();
   }
 });
-$("#profileButton").addEventListener("click", () => toast("プロフィール機能は今後追加予定です"));
+$("#profileButton").addEventListener("click", () => window.openGachaProfile?.());
 
 updateCounts();
 renderCatalog();
