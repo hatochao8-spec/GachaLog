@@ -30,7 +30,9 @@ on public.notifications for update to authenticated
 using (auth.uid() = recipient_id)
 with check (auth.uid() = recipient_id);
 
-grant select, update on public.notifications to authenticated;
+grant select on public.notifications to authenticated;
+revoke update on public.notifications from authenticated;
+grant update (read_at) on public.notifications to authenticated;
 grant usage, select on sequence public.notifications_id_seq to authenticated;
 
 create or replace function public.create_gachalog_like_notification()
