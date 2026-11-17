@@ -95,3 +95,11 @@ dialog{border:0;border-radius:20px;padding:22px;width:calc(100% - 34px);max-widt
 .notification-copy strong{font-size:11px;line-height:1.6;font-weight:600}
 .notification-copy small{font-size:10px;color:var(--muted)}
 .notification-dot{width:8px;height:8px;border-radius:50%;background:#71866e;flex:none}
+
+/* Product-linked community */
+.post-product{display:block;width:100%;text-align:left;border:0;cursor:pointer;font:inherit;font-size:11px;background:#f1f4ef;border-radius:10px;padding:11px;margin-top:10px;color:#536451}
+.product-community-button{width:100%;margin-top:12px;border:1px solid var(--line);border-radius:10px;background:#f1f4ef;color:var(--deep);padding:12px;font-size:11px}
+.product-posts-panel h2{font-size:20px;margin:12px 0 4px}
+.product-posts-maker,.product-posts-count{font-size:11px;color:var(--muted);margin:4px 0}
+.product-posts-list{display:grid;gap:12px;margin-top:15px;max-height:65vh;overflow:auto}
+.product-post-back{width:100%}
