@@ -325,7 +325,45 @@
     });
   }
 
+  async function searchUsers(event) {
+    event.preventDefault();
+    const input = $("#userSearchInput");
+    const results = $("#userSearchResults");
+    const term = input.value.trim().replace(/[,%()]/g, " ");
+    if (!term) {
+      results.innerHTML = '<p class="empty-message">ユーザーIDまたは表示名を入力してください。</p>';
+      return;
+    }
+    results.innerHTML = '<p class="empty-message">検索しています...</p>';
+    try {
+      const [byUsername, byName] = await Promise.all([
+        db.from("profiles").select("id,username,display_name,bio,avatar_url").ilike("username", "%" + term + "%").limit(20),
+        db.from("profiles").select("id,username,display_name,bio,avatar_url").ilike("display_name", "%" + term + "%").limit(20)
+      ]);
+      if (byUsername.error) throw byUsername.error;
+      if (byName.error) throw byName.error;
+      const rows = [...(byUsername.data || []), ...(byName.data || [])];
+      const unique = rows.filter((profile, index, all) => all.findIndex(item => item.id === profile.id) === index)
+        .filter(profile => !user || profile.id !== user.id).slice(0, 20);
+      if (!unique.length) {
+        results.innerHTML = '<p class="empty-message">ユーザーが見つかりませんでした。</p>';
+        return;
+      }
+      results.innerHTML = unique.map(profile =>
+        '<button type="button" class="user-result" data-user-id="' + esc(profile.id) + '">' +
+        avatar(profile) + '<span class="user-result-info"><strong>' + esc(profile.display_name || "ガチャ好き") +
+        '</strong><small>@' + esc(profile.username || "user") + '</small>' +
+        (profile.bio ? '<small class="user-result-bio">' + esc(profile.bio) + '</small>' : '') +
+        '</span><span class="user-result-arrow">›</span></button>'
+      ).join("");
+    } catch (error) {
+      console.error("User search:", error);
+      results.innerHTML = '<p class="empty-message">検索できませんでした。' + esc(error.message || "") + '</p>';
+    }
+  }
+
   async function openPublicProfile(id) {
+    if (!user) { showAuth("login"); return; }
     const result = await db.from("profiles").select("*").eq("id",id).maybeSingle();
     if (result.error || !result.data) return notify("プロフィールを取得できませんでした。");
     const p = result.data;
@@ -363,6 +401,11 @@
     $("#authForm").addEventListener("submit", authSubmit);
     $("#createPostForm").addEventListener("submit", createPost);
     $("#timelineFeed").addEventListener("click", feedClick);
+    $("#userSearchForm").addEventListener("submit", searchUsers);
+    $("#userSearchResults").addEventListener("click", event => {
+      const result = event.target.closest("[data-user-id]");
+      if (result) openPublicProfile(result.dataset.userId);
+    });
     document.querySelectorAll("[data-feed-filter]").forEach(button => button.addEventListener("click", () => {
       feedFilter = button.dataset.feedFilter;
       loadFeed();
