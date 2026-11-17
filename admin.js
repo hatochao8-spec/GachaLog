@@ -67,6 +67,45 @@ async function loadPending() {
     setMessage(`読み込みエラー：${error.message}\nRLS用SQLが未設定の場合も、このエラーになります。`, true);
   }
 }
+async function loadPendingVariants() {
+  const target = $("pendingVariants");
+  if (!target) return;
+  target.innerHTML = '<div class="panel muted">読み込み中...</div>';
+  try {
+    const rows = await api("/rest/v1/product_variants?select=id,product_id,name,image_url,created_at,products(name)&status=eq.pending&order=id.desc");
+    if (!rows.length) {
+      target.innerHTML = '<div class="panel muted">確認待ちのカプセル種類はありません。</div>';
+      return;
+    }
+    target.innerHTML = rows.map(v => `
+      <article class="item">
+        <div class="item-main">
+          <h3>${escapeHTML(v.name)}</h3>
+          <div class="meta">商品：${escapeHTML(v.products?.name || "商品名不明")} ・ 商品ID：${v.product_id}</div>
+          ${v.image_url ? `<img src="${escapeHTML(v.image_url)}" alt="" loading="lazy" style="max-width:110px;border-radius:10px;margin-top:10px">` : ""}
+        </div>
+        <div class="item-actions actions">
+          <button class="primary" data-variant-action="publish" data-id="${v.id}">公開する</button>
+          <button class="danger" data-variant-action="reject" data-id="${v.id}">却下する</button>
+        </div>
+      </article>`).join("");
+    target.querySelectorAll("[data-variant-action]").forEach(button => button.addEventListener("click", async () => {
+      const status = button.dataset.variantAction === "publish" ? "published" : "rejected";
+      if (!confirm(`「${button.closest(".item").querySelector("h3").textContent}」を${status === "published" ? "公開" : "却下"}しますか？`)) return;
+      button.disabled = true;
+      try {
+        await api(`/rest/v1/product_variants?id=eq.${encodeURIComponent(button.dataset.id)}&status=eq.pending`, {
+          method:"PATCH", headers:{Prefer:"return=minimal"}, body:JSON.stringify({status})
+        });
+        setMessage("カプセル種類を" + (status === "published" ? "公開" : "却下") + "しました。");
+        await loadPendingVariants();
+      } catch (error) { setMessage("更新エラー：" + error.message,true); button.disabled = false; }
+    }));
+  } catch (error) {
+    target.innerHTML = '<div class="panel muted">種類を読み込めませんでした。</div>';
+    setMessage("種類の読み込みエラー：" + error.message + "（先に種類管理用SQLを実行してください）",true);
+  }
+}
 async function updateStatus(id, action) {
   const status = action === "publish" ? "published" : "rejected";
   const label = action === "publish" ? "公開" : "却下";
@@ -79,6 +118,7 @@ async function updateStatus(id, action) {
     });
     setMessage(`商品ID ${id} を${label}しました。`);
     await loadPending();
+    await loadPendingVariants();
   } catch (error) {
     setMessage(`更新エラー：${error.message}`, true);
   }
@@ -112,4 +152,5 @@ $("logout").addEventListener("click", () => {
 if (accessToken) {
   showDashboard();
   loadPending();
+  loadPendingVariants();
 }
