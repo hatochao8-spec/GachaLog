@@ -53,6 +53,33 @@
         <p class="empty-state" id="collectionEmpty">まだ登録したアイテムはありません。<br>図鑑からお気に入りを追加してみましょう。</p>
       </section>
 
+      <section class="view" id="timelineView">
+        <div class="page-title"><p class="eyebrow">GACHALOG COMMUNITY</p><h1>みんなの投稿</h1><p class="muted">好きなガチャを、みんなと共有しよう。</p></div>
+        <div class="feed-toolbar"><span class="feed-label">LATEST POSTS</span><button class="dark-button" data-go="createPost">＋ 投稿する</button></div>
+        <div id="timelineFeed" class="timeline-feed"><p class="empty-message">投稿を読み込んでいます...</p></div>
+      </section>
+
+      <section class="view" id="createPostView">
+        <div class="page-title"><p class="eyebrow">SHARE YOUR GACHA</p><h1>投稿を作成</h1><p class="muted">お気に入りや今日の発見をシェアしよう。</p></div>
+        <div id="postAuthNotice" class="empty-panel"><h2>ログインが必要です</h2><p class="muted">投稿するにはアカウントにログインしてください。</p><button class="dark-button" id="postLoginButton">ログイン・新規登録</button></div>
+        <form id="createPostForm" class="post-form" hidden>
+          <label class="form-label" for="postContent">投稿内容</label>
+          <textarea id="postContent" maxlength="2000" placeholder="今日のガチャ記録やお気に入りを紹介しよう..." rows="5"></textarea>
+          <label class="form-label" for="postImage">写真（任意）</label>
+          <input id="postImage" type="file" accept="image/*">
+          <p class="form-hint">写真は5MB以下を推奨。自分で撮影した写真を投稿してね。</p>
+          <label class="form-label" for="postProduct">関連する商品（任意）</label>
+          <select id="postProduct"><option value="">商品を選択しない</option></select>
+          <button class="dark-button submit-post" type="submit">投稿する</button>
+        </form>
+      </section>
+
+      <section class="view" id="profileView">
+        <div class="page-title"><p class="eyebrow">MY PROFILE</p><h1>プロフィール</h1></div>
+        <div id="profileAuthNotice" class="empty-panel"><h2>ログインしてください</h2><p class="muted">ログインするとプロフィールを確認できます。</p><button class="dark-button" id="profileLoginButton">ログイン・新規登録</button></div>
+        <div id="profilePanel" hidden></div>
+      </section>
+
       <section class="view" id="calendarView">
         <div class="page-title"><p class="eyebrow">RELEASE SCHEDULE</p><h1>発売カレンダー</h1><p class="muted">気になる新作の発売情報をチェック。</p></div>
         <div class="empty-panel"><div class="empty-icon">◷</div><h2>新作情報を準備中</h2><p class="muted">発売日・価格・メーカー情報を確認でき次第、順次掲載します。</p></div>
@@ -68,8 +95,8 @@
       <button class="tab active" data-tab="home"><span>⌂</span><small>ホーム</small></button>
       <button class="tab" data-tab="catalog"><span>▦</span><small>図鑑</small></button>
       <button class="tab" data-tab="collection"><span>♡</span><small>コレクション</small></button>
-      <button class="tab" data-tab="calendar"><span>▤</span><small>発売予定</small></button>
-      <button class="tab" data-tab="map"><span>⌖</span><small>設置場所</small></button>
+      <button class="tab" data-tab="timeline"><span>▤</span><small>みんな</small></button>
+      <button class="tab" data-tab="createPost"><span>＋</span><small>投稿</small></button>
     </nav>
   </div>
 
@@ -77,7 +104,27 @@
     <form method="dialog"><button class="dialog-close" aria-label="閉じる">×</button></form>
     <div id="dialogContent"></div>
   </dialog>
+  <dialog id="authDialog">
+    <form method="dialog"><button class="dialog-close" aria-label="閉じる">×</button></form>
+    <div class="auth-content">
+      <p class="eyebrow">WELCOME TO GACHALOG</p><h2 id="authTitle">ログイン</h2>
+      <form id="authForm">
+        <div id="signupFields" hidden>
+          <label class="form-label" for="authDisplayName">表示名</label><input id="authDisplayName" maxlength="30" placeholder="ガチャ好き">
+          <label class="form-label" for="authUsername">ユーザーID</label><input id="authUsername" maxlength="20" placeholder="例：gacha_love">
+        </div>
+        <label class="form-label" for="authEmail">メールアドレス</label><input id="authEmail" type="email" required autocomplete="email" placeholder="メールアドレス">
+        <label class="form-label" for="authPassword">パスワード</label><input id="authPassword" type="password" required minlength="6" autocomplete="current-password" placeholder="6文字以上">
+        <button class="dark-button submit-post" id="authSubmit" type="submit">ログイン</button>
+      </form>
+      <button class="text-button auth-switch" id="authSwitch" type="button">アカウントを新規作成</button>
+      <p class="form-hint" id="authMessage" aria-live="polite"></p>
+    </div>
+  </dialog>
+  <dialog id="socialDialog"><form method="dialog"><button class="dialog-close" aria-label="閉じる">×</button></form><div id="socialDialogContent"></div></dialog>
   <div class="toast" id="toast" role="status"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="app.js"></script>
+  <script src="social.js"></script>
 </body>
 </html>
