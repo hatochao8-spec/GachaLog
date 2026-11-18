@@ -153,3 +153,14 @@ dialog{border:0;border-radius:20px;padding:22px;width:calc(100% - 34px);max-widt
 .variant-submit-form>strong{font-size:12px}
 .variant-submit-form .dark-button{margin:0}
 .variant-progress{font-size:11px;font-weight:700;color:var(--deep);margin-top:12px}
+
+/* Sponsored placements */
+.sponsored-slot:empty{display:none}
+.sponsored-slot{margin:16px 0}
+.sponsored-card{display:flex;gap:13px;align-items:center;padding:13px;background:#fff;border:1px solid var(--line);border-radius:16px;text-decoration:none;color:var(--ink);box-shadow:0 3px 14px rgba(25,35,25,.04)}
+.sponsored-card img{width:86px;height:86px;object-fit:cover;border-radius:12px;background:#f1f1ed;flex-shrink:0}
+.sponsored-copy{min-width:0;flex:1}
+.sponsored-label{display:inline-block;font-size:10px;letter-spacing:.08em;font-weight:700;color:#536b55;background:#edf2eb;border-radius:5px;padding:3px 6px;margin-bottom:5px}
+.sponsored-copy strong{display:block;font-size:14px;line-height:1.5}
+.sponsored-copy p{font-size:12px;color:var(--muted);line-height:1.5;margin:4px 0 0}
+.sponsored-arrow{font-size:18px;color:var(--muted)}
