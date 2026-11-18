@@ -528,7 +528,9 @@
         return '<article class="variant-card" data-variant-card="' + v.id + '"><div class="variant-card-main">' +
           (v.image_url ? '<img src="' + esc(v.image_url) + '" alt="" loading="lazy">' : '<span class="variant-placeholder">🎁</span>') +
           '<strong>' + esc(v.name) + '</strong></div>' +
-          (user ? '<label>獲得日<input type="date" data-variant-date value="' + esc(owned && owned.acquired_at || '') + '"></label><label>ダブり数<input type="number" min="0" max="999" step="1" data-variant-duplicates value="' + Number(owned && owned.duplicate_count || 0) + '"></label><button type="button" class="small-button primary" data-variant-toggle>' + (owned ? '記録を保存' : '持っているに追加') + '</button>' + (owned ? '<button type="button" class="small-button" data-variant-remove>所持解除</button>' : '<small class="form-hint">ログインすると所持登録できます</small>') +
+          (user
+            ? '<label>獲得日<input type="date" data-variant-date value="' + esc(owned && owned.acquired_at || '') + '"></label><label>ダブり数<input type="number" min="0" max="999" step="1" data-variant-duplicates value="' + Number(owned && owned.duplicate_count || 0) + '"></label><button type="button" class="small-button primary" data-variant-toggle>' + (owned ? '記録を保存' : '持っているに追加') + '</button>' + (owned ? '<button type="button" class="small-button" data-variant-remove>所持解除</button>' : '')
+            : '<small class="form-hint">ログインすると所持登録できます</small>') +
           '</article>';
       }).join("");
       content.innerHTML = '<div class="product-posts-panel"><p class="eyebrow">PRODUCT COMMUNITY</p><h2>' + esc(product.name) + '</h2><p class="product-posts-maker">' + esc(product.maker || "メーカー不明") + '</p>' +
