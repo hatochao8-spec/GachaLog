@@ -174,6 +174,7 @@ $("loginForm").addEventListener("submit", async event => {
     await loadPending();
     await loadPendingVariants();
     await loadAdminVariantProducts();
+    await loadCampaigns();
   } catch (error) {
     $("loginMessage").textContent = `ログインエラー：${error.message}`;
   }
@@ -189,4 +190,58 @@ if (accessToken) {
   loadPending();
   loadPendingVariants();
   loadAdminVariantProducts();
+  loadCampaigns();
 }
+
+async function loadCampaigns() {
+  const target = $("campaignList");
+  if (!target) return;
+  target.innerHTML = '<p class="muted">読み込み中...</p>';
+  try {
+    const rows = await api("/rest/v1/ad_campaigns?select=id,title,advertiser,placement,start_at,end_at,status,click_count&order=id.desc&limit=100");
+    target.innerHTML = rows.length ? rows.map(c => `
+      <article class="item" style="margin-top:10px">
+        <div class="item-main"><h3>${escapeHTML(c.title)}</h3>
+          <div class="meta">広告主：${escapeHTML(c.advertiser)} ・ 掲載：${escapeHTML(c.placement)} ・ 状態：${escapeHTML(c.status)}<br>
+          期間：${escapeHTML(new Date(c.start_at).toLocaleString("ja-JP"))} ～ ${escapeHTML(new Date(c.end_at).toLocaleString("ja-JP"))}<br>
+          クリック：${Number(c.click_count)||0}回</div></div>
+        <div class="item-actions actions"><button class="secondary" data-campaign-toggle="${c.id}" data-status="${c.status === "active" ? "paused" : "active"}">${c.status === "active" ? "停止する" : "再開する"}</button></div>
+      </article>`).join("") : '<p class="muted">PRはまだ登録されていません。</p>';
+    target.querySelectorAll("[data-campaign-toggle]").forEach(btn => btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      try {
+        await api("/rest/v1/ad_campaigns?id=eq."+encodeURIComponent(btn.dataset.campaignToggle), {
+          method:"PATCH", headers:{Prefer:"return=minimal"}, body:JSON.stringify({status:btn.dataset.status})
+        });
+        await loadCampaigns();
+      } catch(error) { setMessage("PR更新エラー："+error.message,true); btn.disabled=false; }
+    }));
+  } catch(error) {
+    target.innerHTML = '<p class="muted">PR一覧を読み込めませんでした。</p>';
+    setMessage("PR機能用SQLを先に実行してください："+error.message,true);
+  }
+}
+$("campaignForm")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  const start = new Date($("campaignStart").value);
+  const end = new Date($("campaignEnd").value);
+  const targetUrl = $("campaignUrl").value.trim();
+  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end <= start) {
+    return setMessage("掲載終了日時は開始日時より後にしてください。",true);
+  }
+  if (!/^https?:\\/\\//i.test(targetUrl)) return setMessage("リンク先はhttps://から始まるURLを入力してください。",true);
+  const button = event.submitter || $("campaignForm").querySelector('button[type="submit"]');
+  button.disabled = true;
+  try {
+    await api("/rest/v1/ad_campaigns", {method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({
+      title:$("campaignTitle").value.trim(), advertiser:$("campaignAdvertiser").value.trim(),
+      description:$("campaignDescription").value.trim() || null,
+      image_url:$("campaignImage").value.trim() || null, target_url:targetUrl,
+      placement:$("campaignPlacement").value, start_at:start.toISOString(), end_at:end.toISOString(), status:"active"
+    })});
+    $("campaignForm").reset();
+    setMessage("PRを登録しました。掲載期間になるとアプリに表示されます。");
+    await loadCampaigns();
+  } catch(error) { setMessage("PR登録エラー："+error.message,true); }
+  finally { button.disabled=false; }
+});
