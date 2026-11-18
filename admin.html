@@ -25,11 +25,14 @@
   <div class="top"><div><h1>GachaLog 管理画面</h1><p class="muted">商品候補の確認・公開管理</p></div><a href="./" class="muted">アプリへ戻る</a></div>
   <section id="loginPanel" class="panel">
     <h2>管理者ログイン</h2>
-    <p class="muted">Supabase Authに登録した管理者アカウントでログインしてください。</p>
-    <form id="loginForm">
-      <label for="email">メールアドレス</label><input id="email" type="email" autocomplete="username" required>
-      <label for="password">パスワード</label><input id="password" type="password" autocomplete="current-password" required>
-      <div class="actions"><button class="primary" type="submit">ログイン</button></div>
+    <p class="muted">管理者のメールアドレスに届く6桁のワンタイムコードでログインします。</p>
+    <form id="otpRequestForm">
+      <label for="adminEmail">管理者メールアドレス</label><input id="adminEmail" type="email" autocomplete="username" required>
+      <div class="actions"><button class="primary" type="submit">認証コードを送信</button></div>
+    </form>
+    <form id="otpVerifyForm" class="hidden">
+      <label for="adminOtp">メールに届いた6桁のコード</label><input id="adminOtp" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
+      <div class="actions"><button class="primary" type="submit">コードを確認してログイン</button><button class="secondary" id="resendOtp" type="button">コードを再送信</button></div>
     </form>
   </section>
   <section id="dashboard" class="hidden">
