@@ -28,6 +28,7 @@
         </div>
         <div class="search-wrap"><span>⌕</span><input id="homeSearch" placeholder="ガチャを検索する" aria-label="ガチャを検索"></div>
         <div class="section-heading"><div><p class="eyebrow">PICK UP</p><h2>注目のガチャ</h2></div><button class="text-button" data-go="catalog">すべて見る →</button></div>
+        <div id="homeSponsored" class="sponsored-slot" aria-label="PR掲載"></div>
         <div class="feature-card">
           <div class="feature-art"><span class="capsule">✦</span><span class="art-caption">NEW COLLECTION</span></div>
           <div class="feature-info"><span class="tag">今月のおすすめ</span><h3>小さな日常、集めよう。</h3><p class="muted">気になるアイテムを図鑑に追加してみよう。</p><button class="dark-button" data-go="catalog">図鑑を見る</button></div>
@@ -43,6 +44,7 @@
         <div class="search-wrap"><span>⌕</span><input id="catalogSearch" placeholder="商品名・メーカーで検索" aria-label="商品検索"></div>
         <div class="chips"><button class="chip selected" data-filter="すべて">すべて</button><button class="chip" data-filter="動物">動物</button><button class="chip" data-filter="雑貨">雑貨</button><button class="chip" data-filter="ミニチュア">ミニチュア</button></div>
         <div class="result-count" id="resultCount"></div>
+        <div id="catalogSponsored" class="sponsored-slot" aria-label="PR掲載"></div>
         <div class="catalog-submit-cta"><div><strong>図鑑に商品を追加しよう</strong><p class="muted">まだ登録されていない商品を申請できます。</p></div><button class="dark-button" type="button" data-go="submitProduct">＋ 商品を登録</button></div>
         <div class="product-grid" id="productGrid"></div>
       </section>
@@ -153,5 +155,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="app.js"></script>
   <script src="social.js"></script>
+  <script src="sponsored.js"></script>
 </body>
 </html>
