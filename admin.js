@@ -156,28 +156,79 @@ async function updateStatus(id, action) {
     setMessage(`更新エラー：${error.message}`, true);
   }
 }
-$("loginForm").addEventListener("submit", async event => {
+let pendingOtpEmail = "";
+async function enterAdminDashboard(token) {
+  accessToken = token;
+  const userResponse = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${accessToken}`}
+  });
+  const userData = await userResponse.json();
+  if (!userResponse.ok || userData.id !== "89f33b86-35b8-446b-a0f1-c736c81d3d4b") {
+    accessToken = "";
+    sessionStorage.removeItem("gachalog-admin-token");
+    throw new Error("このメールアドレスは管理者として登録されていません。");
+  }
+  sessionStorage.setItem("gachalog-admin-token", accessToken);
+  $("loginMessage").textContent = "";
+  $("otpRequestForm").classList.add("hidden");
+  $("otpVerifyForm").classList.add("hidden");
+  showDashboard();
+  await loadPending();
+  await loadPendingVariants();
+  await loadAdminVariantProducts();
+  await loadCampaigns();
+}
+async function sendAdminOtp() {
+  const email = $("adminEmail").value.trim();
+  if (!email) throw new Error("メールアドレスを入力してください。");
+  const response = await fetch(`${SUPABASE_URL}/auth/v1/otp`, {
+    method:"POST",
+    headers:{apikey:SUPABASE_KEY,"Content-Type":"application/json"},
+    body:JSON.stringify({email,create_user:false})
+  });
+  const data = await response.json().catch(()=>({}));
+  if (!response.ok) throw new Error(data.msg || data.message || data.error_description || "認証コードを送信できませんでした。");
+  pendingOtpEmail = email;
+  $("otpVerifyForm").classList.remove("hidden");
+  $("loginMessage").textContent = "認証コードをメールで送信しました。受信した6桁の数字を入力してください。迷惑メールフォルダも確認してください。";
+}
+$("otpRequestForm").addEventListener("submit", async event => {
   event.preventDefault();
-  $("loginMessage").textContent = "ログイン中...";
+  const button = event.submitter || $("otpRequestForm").querySelector('button[type="submit"]');
+  button.disabled = true;
+  $("loginMessage").textContent = "認証コードを送信しています...";
+  try { await sendAdminOtp(); }
+  catch(error) { $("loginMessage").textContent = "送信エラー：" + error.message; }
+  finally { button.disabled = false; }
+});
+$("otpVerifyForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  const token = $("adminOtp").value.trim();
+  if (!/^[0-9]{6}$/.test(token)) {
+    $("loginMessage").textContent = "6桁の数字を入力してください。";
+    return;
+  }
+  const button = event.submitter || $("otpVerifyForm").querySelector('button[type="submit"]');
+  button.disabled = true;
+  $("loginMessage").textContent = "コードを確認しています...";
   try {
-    const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-      method: "POST",
-      headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
-      body: JSON.stringify({ email: $("email").value.trim(), password: $("password").value })
+    const response = await fetch(`${SUPABASE_URL}/auth/v1/verify`, {
+      method:"POST",
+      headers:{apikey:SUPABASE_KEY,"Content-Type":"application/json"},
+      body:JSON.stringify({email:pendingOtpEmail,token,type:"email"})
     });
     const data = await response.json();
-    if (!response.ok) throw new Error(data.msg || data.message || data.error_description || "ログインに失敗しました");
-    accessToken = data.access_token;
-    sessionStorage.setItem("gachalog-admin-token", accessToken);
-    $("loginMessage").textContent = "";
-    showDashboard();
-    await loadPending();
-    await loadPendingVariants();
-    await loadAdminVariantProducts();
-    await loadCampaigns();
-  } catch (error) {
-    $("loginMessage").textContent = `ログインエラー：${error.message}`;
-  }
+    if (!response.ok) throw new Error(data.msg || data.message || data.error_description || "コードが正しくないか、有効期限が切れています。");
+    await enterAdminDashboard(data.access_token);
+  } catch(error) { $("loginMessage").textContent = "ログインエラー：" + error.message; }
+  finally { button.disabled = false; }
+});
+$("resendOtp").addEventListener("click", async () => {
+  const button = $("resendOtp");
+  button.disabled = true;
+  try { await sendAdminOtp(); }
+  catch(error) { $("loginMessage").textContent = "再送信エラー：" + error.message; }
+  finally { button.disabled = false; }
 });
 $("logout").addEventListener("click", () => {
   accessToken = "";
@@ -186,11 +237,12 @@ $("logout").addEventListener("click", () => {
   showLogin();
 });
 if (accessToken) {
-  showDashboard();
-  loadPending();
-  loadPendingVariants();
-  loadAdminVariantProducts();
-  loadCampaigns();
+  enterAdminDashboard(accessToken).catch(error => {
+    accessToken = "";
+    sessionStorage.removeItem("gachalog-admin-token");
+    showLogin();
+    $("loginMessage").textContent = "セッションが切れました。メール認証で再ログインしてください。";
+  });
 }
 
 async function loadCampaigns() {
